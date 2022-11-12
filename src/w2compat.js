@@ -36,7 +36,7 @@ import { w2tooltip, w2color, w2menu, w2date, Tooltip } from './w2tooltip.js'
             })
         })(window, {
             w2ui, w2utils, query, w2locale, w2event, w2base,
-            w2popup, w2alert, w2confirm, w2prompt, Dialog,
+            w2popup, w2alert, w2confirm, w2prompt, Dialog, w2window,
             w2tooltip, w2menu, w2color, w2date, Tooltip,
             w2toolbar, w2sidebar, w2tabs, w2layout, w2grid, w2form, w2field
         })
@@ -201,7 +201,7 @@ import { w2tooltip, w2color, w2menu, w2date, Tooltip } from './w2tooltip.js'
 
 export {
     w2ui, w2utils, query, w2locale, w2event, w2base,
-    w2popup, w2alert, w2confirm, w2prompt, Dialog,
+    w2popup, w2alert, w2confirm, w2prompt, Dialog, w2window,
     w2tooltip, w2menu, w2color, w2date, Tooltip,
     w2toolbar, w2sidebar, w2tabs, w2layout, w2grid, w2form, w2field
 }
