@@ -1,4 +1,4 @@
-/* w2ui 2.0.x (nightly) (11/13/2022, 9:59:02 AM) (c) http://w2ui.com, vitmalina@gmail.com */
+/* w2ui 2.0.x (nightly) (11/13/2022, 8:24:12 PM) (c) http://w2ui.com, vitmalina@gmail.com */
 /**
  * Part of w2ui 2.0 library
  *  - Dependencies: w2utils
@@ -22241,6 +22241,7 @@ class w2window extends w2base {
             }
         }
         // render if box specified
+        // Unique name: https://stackoverflow.com/questions/1349404/generate-random-string-characters-in-javascript
         if (!this.name) this.name = 'window-' + Math.random().toString(36).slice(2, 7)
         this.box = '#' + this.name
         this.open(options)
@@ -22504,10 +22505,11 @@ class w2window extends w2base {
         function mvStart(evt) {
             if (!evt) evt = window.event
             self.status = 'moving'
-            let rect = query(this.box).get(0).getBoundingClientRect()
+            let rect = query(self.box).get(0).getBoundingClientRect()
             Object.assign(tmp, {
                 resizing: true,
-                isLocked: query(this.box).find('> .w2ui-lock').length == 1 ? true : false,
+                isLocked: query(self.box +' > .w2ui-lock').length == 1 ? true : false,
+                //isLocked: query(self.box).find('> .w2ui-lock').length == 1 ? true : false,
                 x       : evt.screenX,
                 y       : evt.screenY,
                 pos_x   : rect.x,
@@ -22529,7 +22531,7 @@ class w2window extends w2base {
             let edata = self.trigger('move', { target: 'popup', div_x: tmp.div_x, div_y: tmp.div_y, originalEvent: evt })
             if (edata.isCancelled === true) return
             // default behavior
-            query(this.box).css({
+            query(self.box).css({
                 'transition': 'none',
                 'transform' : 'translate3d('+ tmp.div_x +'px, '+ tmp.div_y +'px, 0px)'
             })
@@ -22543,7 +22545,7 @@ class w2window extends w2base {
             self.status = 'open'
             tmp.div_x      = (evt.screenX - tmp.x)
             tmp.div_y      = (evt.screenY - tmp.y)
-            query(this.box)
+            query(self.box)
                 .css({
                     'left': (tmp.pos_x + tmp.div_x) + 'px',
                     'top' : (tmp.pos_y + tmp.div_y) + 'px'
@@ -22626,6 +22628,9 @@ class w2window extends w2base {
         }
         // event after
         edata.finish()
+    }
+    destroy() {
+        close(true)
     }
     close(immediate) {
         // trigger event
