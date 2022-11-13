@@ -50,6 +50,7 @@ class w2window extends w2base {
             }
         }
         // render if box specified
+        // Unique name: https://stackoverflow.com/questions/1349404/generate-random-string-characters-in-javascript
         if (!this.name) this.name = 'window-' + Math.random().toString(36).slice(2, 7)
         this.box = '#' + this.name
         this.open(options)
