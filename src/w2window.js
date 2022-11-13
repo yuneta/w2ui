@@ -453,6 +453,10 @@ class w2window extends w2base {
         edata.finish()
     }
 
+    destroy() {
+        close(true)
+    }
+
     close(immediate) {
         // trigger event
         let edata = this.trigger('close', { target: 'popup' })
