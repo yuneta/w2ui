@@ -1,4 +1,4 @@
-/* w2ui 2.0.x (nightly) (11/13/2022, 12:03:24 AM) (c) http://w2ui.com, vitmalina@gmail.com */
+/* w2ui 2.0.x (nightly) (11/13/2022, 9:59:02 AM) (c) http://w2ui.com, vitmalina@gmail.com */
 /**
  * Part of w2ui 2.0 library
  *  - Dependencies: w2utils
@@ -22222,7 +22222,6 @@ class w2window extends w2base {
             openMaximized: false,
             moved: false
         }
-        this.box = options.box // DOM Element that holds the element
         this.name = options.name // unique name for w2ui
         this.status = 'closed' // string that describes current status
         this.onOpen = null
@@ -22242,10 +22241,11 @@ class w2window extends w2base {
             }
         }
         // render if box specified
-        if (typeof this.box == 'string') this.box = query(this.box).get(0)
-        if (this.box) this.open()
+        if (!this.name) this.name = 'window-' + Math.random().toString(36).slice(2, 7)
+        this.box = '#' + this.name
+        this.open(options)
     }
-    open() {
+    open(options) {
         let self = this
         if (this.status == 'closing' || query(this.box).hasClass('animating')) {
             // if called when previous is closing
@@ -22262,7 +22262,6 @@ class w2window extends w2base {
             }, arguments[1] ?? {})
         }
         if (options.text != null) options.body = `<div class="w2ui-centered w2ui-msg-text">${options.text}</div>`
-        Object.assign(this, options)
         options = Object.assign(
             {}, this.defaults, old_options, { title: '', body : '' }, options, { maximized: false }
         )
@@ -22330,7 +22329,7 @@ class w2window extends w2base {
             })
         }
         // check if message is already displayed
-        if (query(this.box).length === 0) {
+        if (query(this.box) && query(this.box).find('.w2ui-popup').length === 0) {
             // trigger event
             edata = this.trigger('open', { target: 'popup', present: false })
             if (edata.isCancelled === true) return
@@ -22359,7 +22358,8 @@ class w2window extends w2base {
                 height: ${parseInt(options.height)}px;
                 transition: ${options.speed}s
             `
-            msg = `<div id="w2ui-popup" class="w2ui-popup w2ui-anim-open animating" style="${w2utils.stripSpaces(styles)}"></div>`
+            let id = this.name
+            msg = `<div id="${id}" class="w2ui-popup w2ui-anim-open animating" style="${w2utils.stripSpaces(styles)}"></div>`
             query('body').append(msg)
             query(this.box)[0]._w2popup = {
                 self: this,
