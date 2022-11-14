@@ -1,4 +1,4 @@
-/* w2ui 2.0.x (nightly) (11/14/2022, 1:47:08 PM) (c) http://w2ui.com, vitmalina@gmail.com */
+/* w2ui 2.0.x (nightly) (11/14/2022, 2:29:57 PM) (c) http://w2ui.com, vitmalina@gmail.com */
 /**
  * Part of w2ui 2.0 library
  *  - Dependencies: w2utils
@@ -22235,9 +22235,9 @@ class w2window extends w2base {
         }
         this.name = options.name
         this.box = '#' + this.name
-        this.open(options)
+        this._open(options)
     }
-    open(options) {
+    _open(options) {
         let self = this
         if (this.status == 'closing' || query(this.box).hasClass('animating')) {
             // if called when previous is closing
@@ -22326,155 +22326,76 @@ class w2window extends w2base {
             })
         }
         // check if message is already displayed
-        if (query(this.box) && query(this.box).find('.w2ui-popup').length === 0) {
-            // trigger event
-            edata = this.trigger('open', { target: 'popup', present: false })
-            if (edata.isCancelled === true) return
-            this.status = 'opening'
-            // output message
-            w2utils.lock(document.body, {
-                opacity: 0.3,
-                onClick: options.modal ? null : () => { this.close() }
-            })
-            let btn = ''
-            if (options.showClose) {
-                btn += `<div class="w2ui-popup-button w2ui-popup-close">
-                            <span class="w2ui-icon w2ui-icon-cross w2ui-eaction" data-mousedown="stop" data-click="close"></span>
-                        </div>`
-            }
-            if (options.showMax) {
-                btn += `<div class="w2ui-popup-button w2ui-popup-max">
-                            <span class="w2ui-icon w2ui-icon-box w2ui-eaction" data-mousedown="stop" data-click="toggle"></span>
-                        </div>`
-            }
-            // first insert just body
-            let styles = `
-                left: ${left}px;
-                top: ${top}px;
-                width: ${parseInt(options.width)}px;
-                height: ${parseInt(options.height)}px;
-                transition: ${options.speed}s
-            `
-            let id = this.name
-            msg = `<div id="${id}" class="w2ui-popup w2ui-anim-open animating" style="${w2utils.stripSpaces(styles)}"></div>`
-            query('body').append(msg)
-            query(this.box)[0]._w2popup = {
-                self: this,
-                created: new Promise((resolve) => { this._promCreated = resolve }),
-                opened: new Promise((resolve) => { this._promOpened = resolve }),
-                closing: new Promise((resolve) => { this._promClosing = resolve }),
-                closed: new Promise((resolve) => { this._promClosed = resolve }),
-            }
-            // then content
-            styles = `${!options.title ? 'top: 0px !important;' : ''} ${!options.buttons ? 'bottom: 0px !important;' : ''}`
-            msg = `
-                <span name="hidden-first" tabindex="0" style="position: absolute; top: -100px"></span>
-                <div class="w2ui-popup-title" style="${!options.title ? 'display: none' : ''}">${btn}</div>
-                <div class="w2ui-box" style="${styles}">
-                    <div class="w2ui-popup-body ${!options.title || ' w2ui-popup-no-title'}
-                        ${!options.buttons || ' w2ui-popup-no-buttons'}" style="${options.style}">
-                    </div>
-                </div>
-                <div class="w2ui-popup-buttons" style="${!options.buttons ? 'display: none' : ''}"></div>
-                <span name="hidden-last" tabindex="0" style="position: absolute; top: -100px"></span>
-            `
-            query(this.box).html(msg)
-            if (options.title) query(this.box).find('.w2ui-popup-title').append(w2utils.lang(options.title))
-            if (options.buttons) query(this.box).find('.w2ui-popup-buttons').append(options.buttons)
-            if (options.body) query(this.box).find('.w2ui-popup-body').append(options.body)
-            // allow element to render
-            setTimeout(() => {
-                query(this.box)
-                    .css('transition', options.speed + 's')
-                    .removeClass('w2ui-anim-open')
-                w2utils.bindEvents(query(this.box).find('.w2ui-eaction'), this)
-                query(this.box).find('.w2ui-popup-body').show()
-                this._promCreated()
-            }, 1)
-            // clean transform
-            clearTimeout(this._timer)
-            this._timer = setTimeout(() => {
-                this.status = 'open'
-                self.setFocus(options.focus)
-                // event after
-                edata.finish()
-                this._promOpened()
-                query(this.box).removeClass('animating')
-            }, options.speed * 1000)
-        } else {
-            // trigger event
-            edata = this.trigger('open', { target: 'popup', present: true })
-            if (edata.isCancelled === true) return
-            // check if size changed
-            this.status = 'opening'
-            if (old_options != null) {
-                if (!old_options.maximized && (old_options.width != options.width || old_options.height != options.height)) {
-                    this.resize(options.width, options.height)
-                }
-                options.prevSize  = options.width + 'px:' + options.height + 'px'
-                options.maximized = old_options.maximized
-            }
-            // show new items
-            let cloned = query(this.box).find('.w2ui-box').get(0).cloneNode(true)
-            query(cloned).removeClass('w2ui-box').addClass('w2ui-box-temp').find('.w2ui-popup-body').empty().append(options.body)
-            query(this.box).find('.w2ui-box').after(cloned)
-            if (options.buttons) {
-                query(this.box).find('.w2ui-popup-buttons').show().html('').append(options.buttons)
-                query(this.box).find('.w2ui-popup-body').removeClass('w2ui-popup-no-buttons')
-                query(this.box).find('.w2ui-box').css('bottom', '')
-                query(this.box).find('.w2ui-box-temp').css('bottom', '')
-            } else {
-                query(this.box).find('.w2ui-popup-buttons').hide().html('')
-                query(this.box).find('.w2ui-popup-body').addClass('w2ui-popup-no-buttons')
-                query(this.box).find('.w2ui-box').css('bottom', '0px')
-                query(this.box).find('.w2ui-box-temp').css('bottom', '0px')
-            }
-            if (options.title) {
-                query(this.box).find('.w2ui-popup-title')
-                    .show()
-                    .html((options.showClose
-                        ? `<div class="w2ui-popup-button w2ui-popup-close">
-                                <span class="w2ui-icon w2ui-icon-cross w2ui-eaction" data-mousedown="stop" data-click="close"></span>
-                            </div>`
-                        : '') +
-                        (options.showMax
-                        ? `<div class="w2ui-popup-button w2ui-popup-max">
-                                <span class="w2ui-icon w2ui-icon-box w2ui-eaction" data-mousedown="stop" data-click="toggle"></span>
-                            </div>`
-                        : ''))
-                    .append(options.title)
-                query(this.box).find('.w2ui-popup-body').removeClass('w2ui-popup-no-title')
-                query(this.box).find('.w2ui-box').css('top', '')
-                query(this.box).find('.w2ui-box-temp').css('top', '')
-            } else {
-                query(this.box).find('.w2ui-popup-title').hide().html('')
-                query(this.box).find('.w2ui-popup-body').addClass('w2ui-popup-no-title')
-                query(this.box).find('.w2ui-box').css('top', '0px')
-                query(this.box).find('.w2ui-box-temp').css('top', '0px')
-            }
-            // transition
-            let div_old = query(this.box).find('.w2ui-box')[0]
-            let div_new = query(this.box).find('.w2ui-box-temp')[0]
-            query(this.box).addClass('animating')
-            w2utils.transition(div_old, div_new, options.transition, () => {
-                // clean up
-                query(div_old).remove()
-                query(div_new).removeClass('w2ui-box-temp').addClass('w2ui-box')
-                let $body = query(div_new).find('.w2ui-popup-body')
-                if ($body.length == 1) {
-                    $body[0].style.cssText = options.style
-                    $body.show()
-                }
-                // focus on first button
-                self.setFocus(options.focus)
-                query(this.box).removeClass('animating')
-            })
-            // call event onOpen
-            this.status = 'open'
-            edata.finish()
-            w2utils.bindEvents(query(this.box).find('.w2ui-eaction'), this)
-            query(this.box).find('.w2ui-popup-body').show()
+        if (query(this.box) && query(this.box).find('.w2ui-popup').length > 0) {
         }
+        // trigger event
+        edata = this.trigger('open', { target: 'popup', present: false })
+        if (edata.isCancelled === true) return
+        this.status = 'opening'
+        // output message
+        w2utils.lock(document.body, {
+            opacity: 0.3,
+            onClick: options.modal ? null : () => { this.close() }
+        })
+        let btn = ''
+        if (options.showClose) {
+            btn += `<div class="w2ui-popup-button w2ui-popup-close">
+                        <span class="w2ui-icon w2ui-icon-cross w2ui-eaction" data-mousedown="stop" data-click="close"></span>
+                    </div>`
+        }
+        if (options.showMax) {
+            btn += `<div class="w2ui-popup-button w2ui-popup-max">
+                        <span class="w2ui-icon w2ui-icon-box w2ui-eaction" data-mousedown="stop" data-click="toggle"></span>
+                    </div>`
+        }
+        // first insert just body
+        let styles = `
+            left: ${left}px;
+            top: ${top}px;
+            width: ${parseInt(options.width)}px;
+            height: ${parseInt(options.height)}px;
+            transition: ${options.speed}s
+        `
+        let id = this.name
+        msg = `<div id="${id}" class="w2ui-popup w2ui-anim-open animating" style="${w2utils.stripSpaces(styles)}"></div>`
+        query('body').append(msg)
+        query(this.box)[0]._w2popup = {
+            self: this,
+            created: new Promise((resolve) => { this._promCreated = resolve }),
+            opened: new Promise((resolve) => { this._promOpened = resolve }),
+            closing: new Promise((resolve) => { this._promClosing = resolve }),
+            closed: new Promise((resolve) => { this._promClosed = resolve }),
+        }
+        // then content
+        styles = `${!options.title ? 'top: 0px !important;' : ''} ${!options.buttons ? 'bottom: 0px !important;' : ''}`
+        msg = `
+            <span name="hidden-first" tabindex="0" style="position: absolute; top: -100px"></span>
+            <div class="w2ui-popup-title" style="${!options.title ? 'display: none' : ''}">${btn}</div>
+            <div class="w2ui-box" style="${styles}">
+                <div class="w2ui-popup-body ${!options.title || ' w2ui-popup-no-title'}
+                    ${!options.buttons || ' w2ui-popup-no-buttons'}" style="${options.style}">
+                </div>
+            </div>
+            <div class="w2ui-popup-buttons" style="${!options.buttons ? 'display: none' : ''}"></div>
+            <span name="hidden-last" tabindex="0" style="position: absolute; top: -100px"></span>
+        `
+        query(this.box).html(msg)
+        if (options.title) query(this.box).find('.w2ui-popup-title').append(w2utils.lang(options.title))
+        if (options.buttons) query(this.box).find('.w2ui-popup-buttons').append(options.buttons)
+        if (options.body) query(this.box).find('.w2ui-popup-body').append(options.body)
+        // allow element to render
+        query(this.box)
+            .css('transition', options.speed + 's')
+            .removeClass('w2ui-anim-open')
+        w2utils.bindEvents(query(this.box).find('.w2ui-eaction'), this)
+        query(this.box).find('.w2ui-popup-body').show()
+        this._promCreated()
+        this.status = 'open'
+        self.setFocus(options.focus)
+        // event after
+        edata.finish()
+        this._promOpened()
+        query(this.box).removeClass('animating')
         if (options.openMaximized) {
             this.max()
         }

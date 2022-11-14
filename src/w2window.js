@@ -24,7 +24,6 @@ class w2window extends w2base {
             focus: null,        // brings focus to the element, can be a number or selector
             actions: null,      // actions object
             style: '',          // style of the message div
-            speed: 0.3,
             modal: false,
             maximized: false,   // this is a flag to show the state - to open the popup maximized use openMaximized instead
             keyboard: true,     // will close popup on esc if not modal
@@ -60,7 +59,7 @@ class w2window extends w2base {
 
     _open(options) {
         let self = this
-        if (this.status == 'closing' || query(this.box).hasClass('animating')) {
+        if (this.status == 'closing') {
             // if called when previous is closing
             this.close(true)
         }
@@ -179,10 +178,9 @@ class w2window extends w2base {
             top: ${top}px;
             width: ${parseInt(options.width)}px;
             height: ${parseInt(options.height)}px;
-            transition: ${options.speed}s
         `
         let id = this.name
-        msg = `<div id="${id}" class="w2ui-popup w2ui-anim-open animating" style="${w2utils.stripSpaces(styles)}"></div>`
+        msg = `<div id="${id}" class="w2ui-popup" style="${w2utils.stripSpaces(styles)}"></div>`
         query('body').append(msg)
         query(this.box)[0]._w2popup = {
             self: this,
@@ -211,9 +209,6 @@ class w2window extends w2base {
         if (options.body) query(this.box).find('.w2ui-popup-body').append(options.body)
 
         // allow element to render
-        query(this.box)
-            .css('transition', options.speed + 's')
-            .removeClass('w2ui-anim-open')
         w2utils.bindEvents(query(this.box).find('.w2ui-eaction'), this)
         query(this.box).find('.w2ui-popup-body').show()
         this._promCreated()
@@ -223,7 +218,6 @@ class w2window extends w2base {
         // event after
         edata.finish()
         this._promOpened()
-        query(this.box).removeClass('animating')
 
         if (options.openMaximized) {
             this.max()
@@ -392,49 +386,22 @@ class w2window extends w2base {
     }
 
     destroy() {
-        close(true)
+        close()
     }
 
-    close(immediate) {
+    close() {
         // trigger event
         let edata = this.trigger('close', { target: 'popup' })
         if (edata.isCancelled === true) return
-        let cleanUp = () => {
-            // return template
-            query(this.box).remove()
-            // restore active
-            if (this.options._last_focus && this.options._last_focus.length > 0) this.options._last_focus.focus()
-            this.status = 'closed'
-            this.options = {}
-            // event after
-            edata.finish()
-            this._promClosed()
-        }
-        if (query(this.box).length === 0 || this.status == 'closed') { // already closed
-            return
-        }
-        if (this.status == 'opening') { // if it is opening
-            immediate = true
-        }
-        if (this.status == 'closing' && immediate === true) {
-            cleanUp()
-            clearTimeout(this.tmp.closingTimer)
-            w2utils.unlock(document.body, 0)
-            return
-        }
-        // default behavior
-        this.status = 'closing'
-        query(this.box)
-            .css('transition', this.options.speed + 's')
-            .addClass('w2ui-anim-close animating')
-        w2utils.unlock(document.body, 300)
-        this._promClosing()
+        query(this.box).remove()
+        // restore active
+        if (this.options._last_focus && this.options._last_focus.length > 0) this.options._last_focus.focus()
+        this.status = 'closed'
+        this.options = {}
+        // event after
+        edata.finish()
+        this._promClosed()
 
-        if (immediate) {
-            cleanUp()
-        } else {
-            this.tmp.closingTimer = setTimeout(cleanUp, this.options.speed * 1000)
-        }
         // remove keyboard events
         if (this.options.keyboard) {
             query(document.body).off('keydown', this.keydown)
