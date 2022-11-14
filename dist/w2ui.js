@@ -1,4 +1,4 @@
-/* w2ui 2.0.x (nightly) (11/14/2022, 9:44:38 AM) (c) http://w2ui.com, vitmalina@gmail.com */
+/* w2ui 2.0.x (nightly) (11/14/2022, 1:47:08 PM) (c) http://w2ui.com, vitmalina@gmail.com */
 /**
  * Part of w2ui 2.0 library
  *  - Dependencies: w2utils
@@ -22191,6 +22191,8 @@ class w2field extends w2base {
 
 class w2window extends w2base {
     constructor(options) {
+        // Unique name: https://stackoverflow.com/questions/1349404/generate-random-string-characters-in-javascript
+        if (!options.name) options.name = 'w2w-' + Math.random().toString(36).slice(2, 7)
         super(options.name)
         this.defaults = {
             title: '',
@@ -22214,7 +22216,6 @@ class w2window extends w2base {
             x: undefined,
             y: undefined
         }
-        this.name = options.name // unique name for w2ui
         this.status = 'closed' // string that describes current status
         this.onOpen = null
         this.onClose = null
@@ -22232,9 +22233,7 @@ class w2window extends w2base {
                 this.center(undefined, undefined, true)
             }
         }
-        // render if box specified
-        // Unique name: https://stackoverflow.com/questions/1349404/generate-random-string-characters-in-javascript
-        if (!this.name) this.name = 'window-' + Math.random().toString(36).slice(2, 7)
+        this.name = options.name
         this.box = '#' + this.name
         this.open(options)
     }

@@ -53,6 +53,7 @@ class w2window extends w2base {
                 this.center(undefined, undefined, true)
             }
         }
+        this.name = options.name
         this.box = '#' + this.name
         this.open(options)
     }
