@@ -29,7 +29,9 @@ class w2window extends w2base {
             showMax: false,
             transition: null,
             openMaximized: false,
-            moved: false
+            moved: false,
+            x: undefined,
+            y: undefined
         }
         this.name = options.name // unique name for w2ui
         this.status = 'closed' // string that describes current status
@@ -95,6 +97,11 @@ class w2window extends w2base {
 
         let edata, msg, tmp
         let { top, left } = this.center()
+        if (options.x !== undefined && options.y !== undefined) {
+            left = options.x
+            top = options.y
+            options.moved = true
+        }
 
         let prom = {
             self: this,
@@ -366,10 +373,12 @@ class w2window extends w2base {
             self.status = 'open'
             tmp.div_x      = (evt.screenX - tmp.x)
             tmp.div_y      = (evt.screenY - tmp.y)
+            let x = tmp.pos_x + tmp.div_x
+            let y = tmp.pos_y + tmp.div_y
             query(self.box)
                 .css({
-                    'left': (tmp.pos_x + tmp.div_x) + 'px',
-                    'top' : (tmp.pos_y + tmp.div_y) + 'px'
+                    'left': x + 'px',
+                    'top' : y + 'px'
                 })
                 .css({
                     'transition': 'none',
@@ -378,6 +387,11 @@ class w2window extends w2base {
             tmp.resizing = false
             query(document.body).off('.w2ui-popup')
             if (!tmp.isLocked) self.unlock()
+
+            // trigger event
+            let edata = self.trigger('stop', { target: 'popup', x: x, y: y, originalEvent: evt })
+            // event after
+            edata.finish()
         }
     }
 
