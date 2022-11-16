@@ -1,4 +1,4 @@
-/* w2ui 2.0.x (nightly) (11/16/2022, 2:10:28 PM) (c) http://w2ui.com, vitmalina@gmail.com */
+/* w2ui 2.0.x (nightly) (11/16/2022, 2:17:05 PM) (c) http://w2ui.com, vitmalina@gmail.com */
 /**
  * Part of w2ui 2.0 library
  *  - Dependencies: w2utils
@@ -22272,6 +22272,7 @@ class w2window extends w2base {
             id = this.name
             msg = `<div id="${id}" class="w2ui-popup" style="${w2utils.stripSpaces(styles)}"></div>`
             query('body').append(msg)
+            this.box = query('#' + id).get(0)
         } else {
             // TODO check this
             this.box.style.cssText = w2utils.stripSpaces(styles)

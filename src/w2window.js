@@ -277,6 +277,9 @@ class w2window extends w2base {
     }
 
     destroy() {
+        close()
+    }
+    close() {
         // trigger event
         let edata = this.trigger('close', { target: 'popup' })
         if (edata.isCancelled === true) return
