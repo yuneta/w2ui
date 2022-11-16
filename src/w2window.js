@@ -35,7 +35,7 @@ class w2window extends w2base {
             x: undefined, // Set x,y to some value will not center the window (it be considered moved)
             y: undefined
         }
-        this.status = null // string that describes current status
+        this.status = 'opening' // string that describes current status
         this.onOpen = null
         this.onClose = null
         this.onMax = null
@@ -75,7 +75,27 @@ class w2window extends w2base {
 
     render(options) {
         let self = this
-        if (typeof this.box == 'string') this.box = query(this.box).get(0)
+        if (typeof this.box == 'string') {
+            this.box = query(this.box).get(0)
+        } else {
+            // first insert just body
+            let { top, left } = this.center()
+            if (options.x !== undefined && options.y !== undefined) {
+                left = options.x
+                top = options.y
+                options.moved = true
+            }
+
+            let styles = `
+                left: ${left}px;
+                top: ${top}px;
+                width: ${parseInt(options.width)}px;
+                height: ${parseInt(options.height)}px;
+            `
+            let id = this.name
+            msg = `<div id="${id}" class="w2ui-popup" style="${w2utils.stripSpaces(styles)}"></div>`
+            query('body').append(msg)
+        }
 
         // assign events
         Object.keys(options).forEach(key => {
@@ -85,13 +105,6 @@ class w2window extends w2base {
         })
 
         let edata, msg, tmp
-        let { top, left } = this.center()
-        if (options.x !== undefined && options.y !== undefined) {
-            left = options.x
-            top = options.y
-            options.moved = true
-        }
-
         // convert action arrays into buttons
         if (options.actions != null && !options.buttons) {
             options.buttons = ''
@@ -135,18 +148,8 @@ class w2window extends w2base {
                         <span class="w2ui-icon w2ui-icon-box w2ui-eaction" data-mousedown="stop" data-click="toggle"></span>
                     </div>`
         }
-        // first insert just body
-        let styles = `
-            left: ${left}px;
-            top: ${top}px;
-            width: ${parseInt(options.width)}px;
-            height: ${parseInt(options.height)}px;
-        `
-        let id = this.name
-        msg = `<div id="${id}" class="w2ui-popup" style="${w2utils.stripSpaces(styles)}"></div>`
-        query('body').append(msg)
-        // then content
-        styles = `${!options.title ? 'top: 0px !important;' : ''} ${!options.buttons ? 'bottom: 0px !important;' : ''}`
+        // insert content
+        let styles = `${!options.title ? 'top: 0px !important;' : ''} ${!options.buttons ? 'bottom: 0px !important;' : ''}`
         msg = `
             <span name="hidden-first" tabindex="0" style="position: absolute; top: -100px"></span>
             <div class="w2ui-popup-title" style="${!options.title ? 'display: none' : ''}">${btn}</div>
