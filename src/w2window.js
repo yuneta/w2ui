@@ -91,9 +91,10 @@ class w2window extends w2base {
             width: ${parseInt(options.width)}px;
             height: ${parseInt(options.height)}px;
         `
+        let msg, id
         if (!this.box) {
             // Create new container
-            let id = this.name
+            id = this.name
             msg = `<div id="${id}" class="w2ui-popup" style="${w2utils.stripSpaces(styles)}"></div>`
             query('body').append(msg)
         } else {
@@ -109,7 +110,7 @@ class w2window extends w2base {
             }
         })
 
-        let edata, msg, tmp
+        let edata, tmp
         // convert action arrays into buttons
         if (options.actions != null && !options.buttons) {
             options.buttons = ''
