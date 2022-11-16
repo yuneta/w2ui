@@ -97,6 +97,7 @@ class w2window extends w2base {
             id = this.name
             msg = `<div id="${id}" class="w2ui-popup" style="${w2utils.stripSpaces(styles)}"></div>`
             query('body').append(msg)
+            this.box = query('#' + id).get(0)
         } else {
             // TODO check this
             this.box.style.cssText = w2utils.stripSpaces(styles)
