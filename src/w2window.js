@@ -77,24 +77,29 @@ class w2window extends w2base {
         let self = this
         if (typeof this.box == 'string') {
             this.box = query(this.box).get(0)
-        } else {
-            // first insert just body
-            let { top, left } = this.center()
-            if (options.x !== undefined && options.y !== undefined) {
-                left = options.x
-                top = options.y
-                options.moved = true
-            }
+        }
 
-            let styles = `
-                left: ${left}px;
-                top: ${top}px;
-                width: ${parseInt(options.width)}px;
-                height: ${parseInt(options.height)}px;
-            `
+        let { top, left } = this.center()
+        if (options.x !== undefined && options.y !== undefined) {
+            left = options.x
+            top = options.y
+            options.moved = true
+        }
+        let styles = `
+            left: ${left}px;
+            top: ${top}px;
+            width: ${parseInt(options.width)}px;
+            height: ${parseInt(options.height)}px;
+        `
+        if (!this.box) {
+            // Create new container
             let id = this.name
             msg = `<div id="${id}" class="w2ui-popup" style="${w2utils.stripSpaces(styles)}"></div>`
             query('body').append(msg)
+        } else {
+            // TODO check this
+            this.box.style.cssText = w2utils.stripSpaces(styles)
+            this.box.addClass('w2ui-popup')
         }
 
         // assign events
@@ -148,8 +153,9 @@ class w2window extends w2base {
                         <span class="w2ui-icon w2ui-icon-box w2ui-eaction" data-mousedown="stop" data-click="toggle"></span>
                     </div>`
         }
+
         // insert content
-        let styles = `${!options.title ? 'top: 0px !important;' : ''} ${!options.buttons ? 'bottom: 0px !important;' : ''}`
+        styles = `${!options.title ? 'top: 0px !important;' : ''} ${!options.buttons ? 'bottom: 0px !important;' : ''}`
         msg = `
             <span name="hidden-first" tabindex="0" style="position: absolute; top: -100px"></span>
             <div class="w2ui-popup-title" style="${!options.title ? 'display: none' : ''}">${btn}</div>
@@ -207,7 +213,7 @@ class w2window extends w2base {
             let rect = query(self.box).get(0).getBoundingClientRect()
             Object.assign(tmp, {
                 resizing: true,
-                isLocked: query(self.box +' > .w2ui-lock').length == 1 ? true : false,
+                isLocked: query(self.box).find(':scope > .w2ui-lock').length == 1 ? true : false,
                 //isLocked: query(self.box).find('> .w2ui-lock').length == 1 ? true : false,
                 x       : evt.screenX,
                 y       : evt.screenY,
