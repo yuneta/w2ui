@@ -1,4 +1,4 @@
-/* w2ui 2.0.x (nightly) (11/16/2022, 2:17:05 PM) (c) http://w2ui.com, vitmalina@gmail.com */
+/* w2ui 2.0.x (nightly) (11/16/2022, 2:20:01 PM) (c) http://w2ui.com, vitmalina@gmail.com */
 /**
  * Part of w2ui 2.0 library
  *  - Dependencies: w2utils
@@ -22438,6 +22438,9 @@ class w2window extends w2base {
         }
     }
     destroy() {
+        close()
+    }
+    close() {
         // trigger event
         let edata = this.trigger('close', { target: 'popup' })
         if (edata.isCancelled === true) return
