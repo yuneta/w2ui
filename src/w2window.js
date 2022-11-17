@@ -378,9 +378,7 @@ class w2window extends w2base {
         // default action
         if (this.options.maximized === true) this.min(); else this.max()
         // event after
-        setTimeout(() => {
-            edata.finish()
-        }, 50)
+        edata.finish()
     }
 
     max() {
@@ -508,12 +506,8 @@ class w2window extends w2base {
             'width' : width + 'px',
             'height': height + 'px'
         })
-        let tmp_int = setInterval(() => { self.resizeMessages() }, 10) // then messages resize nicely
-        setTimeout(() => {
-            clearInterval(tmp_int)
-            self.resizeMessages()
-            if (typeof callBack == 'function') callBack()
-        }, 50) // give extra 50 ms
+        self.resizeMessages()
+        if (typeof callBack == 'function') callBack()
     }
 
     // internal function

@@ -1,4 +1,4 @@
-/* w2ui 2.0.x (nightly) (11/17/2022, 10:16:57 AM) (c) http://w2ui.com, vitmalina@gmail.com */
+/* w2ui 2.0.x (nightly) (11/17/2022, 11:58:55 AM) (c) http://w2ui.com, vitmalina@gmail.com */
 /**
  * Part of w2ui 2.0 library
  *  - Dependencies: w2utils
@@ -22535,7 +22535,7 @@ class w2window extends w2base {
         // event after
         setTimeout(() => {
             edata.finish()
-        }, (this.options.speed * 1000) + 50)
+        }, 50)
     }
     max() {
         if (this.options.maximized === true) return
@@ -22611,8 +22611,8 @@ class w2window extends w2base {
         args.unshift(query(this.box))
         w2utils.lock(...args)
     }
-    unlock(speed) {
-        w2utils.unlock(query(this.box), speed)
+    unlock() {
+        w2utils.unlock(query(this.box), 0)
     }
     center(width, height, force) {
         let maxW, maxH
@@ -22647,12 +22647,9 @@ class w2window extends w2base {
     }
     resize(newWidth, newHeight, callBack) {
         let self = this
-        if (this.options.speed == null) this.options.speed = 0
         // calculate new position
         let { top, left, width, height } = this.center(newWidth, newHeight)
-        let speed = this.options.speed
         query(this.box).css({
-            'transition': `${speed}s width, ${speed}s height, ${speed}s left, ${speed}s top`,
             'top'   : top + 'px',
             'left'  : left + 'px',
             'width' : width + 'px',
@@ -22663,7 +22660,7 @@ class w2window extends w2base {
             clearInterval(tmp_int)
             self.resizeMessages()
             if (typeof callBack == 'function') callBack()
-        }, (this.options.speed * 1000) + 50) // give extra 50 ms
+        }, 50) // give extra 50 ms
     }
     // internal function
     resizeMessages() {
