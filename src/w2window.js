@@ -198,7 +198,7 @@ class w2window extends w2base {
         query(window).on('resize', this.handleResize)
         // initialize move
         tmp = {
-            resizing : false,
+            moving : false,
             mvMove   : mvMove,
             mvStop   : mvStop
         }
@@ -214,7 +214,7 @@ class w2window extends w2base {
             self.status = 'moving'
             let rect = query(self.box).get(0).getBoundingClientRect()
             Object.assign(tmp, {
-                resizing: true,
+                moving: true,
                 isLocked: query(self.box).find(':scope > .w2ui-lock').length == 1 ? true : false,
                 //isLocked: query(self.box).find('> .w2ui-lock').length == 1 ? true : false,
                 x       : evt.screenX,
@@ -231,7 +231,7 @@ class w2window extends w2base {
         }
 
         function mvMove(evt) {
-            if (tmp.resizing != true) return
+            if (tmp.moving != true) return
             if (!evt) evt = window.event
             tmp.div_x = evt.screenX - tmp.x
             tmp.div_y = evt.screenY - tmp.y
@@ -249,7 +249,7 @@ class w2window extends w2base {
         }
 
         function mvStop(evt) {
-            if (tmp.resizing != true) return
+            if (tmp.moving != true) return
             if (!evt) evt = window.event
             self.status = 'open'
             tmp.div_x      = (evt.screenX - tmp.x)
@@ -265,7 +265,7 @@ class w2window extends w2base {
                     'transition': 'none',
                     'transform' : 'translate3d(0px, 0px, 0px)'
                 })
-            tmp.resizing = false
+            tmp.moving = false
             query(document.body).off('.w2ui-popup')
             if (!tmp.isLocked) self.unlock()
 
