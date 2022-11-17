@@ -277,7 +277,7 @@ class w2window extends w2base {
     }
 
     destroy() {
-        close()
+        this.close()
     }
     close() {
         // trigger event
