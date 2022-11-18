@@ -19,10 +19,10 @@ class w2window extends w2base {
             text: '',           // just a text (will be centered)
             body: '',
             buttons: '',
-            x: 200,
-            y: 100,
-            width: 400,
-            height: 300,
+            x: 300,
+            y: 20,
+            width: 600,
+            height: 500,
             focus: null,        // brings focus to the element, can be a number or selector
             actions: null,      // actions object
             style: '',          // style of the message div
