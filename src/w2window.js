@@ -171,7 +171,7 @@ class w2window extends w2base {
                 </div>
             </div>
             <div class="w2ui-window-buttons" style="${!options.buttons ? 'display: none' : ''}"></div>
-            <div class="w2ui-window-button w2ui-window-resize" style="${!options.resizable ? 'display: none' : ''}">
+            <div class="w2ui-window-button" style="${!options.resizable ? 'display: none' : ''}">
                 <span class="w2ui-icon w2ui-icon-resize w2ui-eaction" data-mousedown="stop" data-click="toggle"></span>
             </div>
             <span name="hidden-last" tabindex="0" style="position: absolute; top: -100px"></span>
