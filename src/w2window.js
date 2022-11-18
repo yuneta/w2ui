@@ -171,6 +171,9 @@ class w2window extends w2base {
                 </div>
             </div>
             <div class="w2ui-popup-buttons" style="${!options.buttons ? 'display: none' : ''}"></div>
+            <div class="w2ui-popup-button w2ui-popup-max" style="${!options.resizable ? 'display: none' : ''}">
+                <span class="w2ui-icon w2ui-icon-resize w2ui-eaction" data-mousedown="stop" data-click="toggle"></span>
+            </div>
             <span name="hidden-last" tabindex="0" style="position: absolute; top: -100px"></span>
         `
         query(this.box).html(msg)
