@@ -1,4 +1,4 @@
-/* w2ui 2.0.x (nightly) (11/17/2022, 12:03:03 PM) (c) http://w2ui.com, vitmalina@gmail.com */
+/* w2ui 2.0.x (nightly) (11/18/2022, 10:42:53 AM) (c) http://w2ui.com, vitmalina@gmail.com */
 /**
  * Part of w2ui 2.0 library
  *  - Dependencies: w2utils
@@ -22199,8 +22199,10 @@ class w2window extends w2base {
             text: '',           // just a text (will be centered)
             body: '',
             buttons: '',
-            width: 450,
-            height: 250,
+            x: 200,
+            y: 100,
+            width: 400,
+            height: 300,
             focus: null,        // brings focus to the element, can be a number or selector
             actions: null,      // actions object
             style: '',          // style of the message div
@@ -22211,9 +22213,7 @@ class w2window extends w2base {
             showMax: false,
             transition: null,
             openMaximized: false,
-            moved: false,
-            x: undefined, // Set x,y to some value will not center the window (it be considered moved)
-            y: undefined
+            center: false,
         }
         this.status = 'opening' // string that describes current status
         this.onOpen = null
@@ -22227,10 +22227,12 @@ class w2window extends w2base {
         this.tmp = {}
         // event handler for resize
         this.handleResize = (event) => {
-            // if it was moved by the user, do not auto resize
-            if (!this.options.moved) {
-                this.center(undefined, undefined, true)
-            }
+            // Browser window resize
+            let rect = {x: options.x, y: options.y, width: options.width, height: options.height}
+            rect = this.do_fix_dimension_to_screen(rect.x, rect.y, rect.width, rect.height)
+            if (this.options.center)
+                rect = this.do_center(rect.x, rect.y, rect.width, rect.height)
+            this.resize(rect.x, rect.y, rect.width, rect.height)
         }
         this.name = options.name
         if (!this.box) {
@@ -22254,17 +22256,15 @@ class w2window extends w2base {
         if (typeof this.box == 'string') {
             this.box = query(this.box).get(0)
         }
-        let { top, left } = this.center()
-        if (options.x !== undefined && options.y !== undefined) {
-            left = options.x
-            top = options.y
-            options.moved = true
-        }
+        let rect = this.do_fix_dimension_to_screen(options.x, options.y, options.width, options.height)
+        if (this.options.center)
+            rect = this.do_center(rect.x, rect.y, rect.width, rect.height)
+        this.resize(rect.x, rect.y, rect.width, rect.height)
         let styles = `
-            left: ${left}px;
-            top: ${top}px;
-            width: ${parseInt(options.width)}px;
-            height: ${parseInt(options.height)}px;
+            left: ${rect.x}px;
+            top: ${rect.y}px;
+            width: ${rect.width}px;
+            height: ${rect.height}px;
         `
         let msg, id
         if (!this.box) {
@@ -22277,6 +22277,10 @@ class w2window extends w2base {
             // TODO check this
             this.box.style.cssText = w2utils.stripSpaces(styles)
             this.box.addClass('w2ui-popup')
+        }
+        if (!this.box) {
+            console.log('w2window box is null')
+            return
         }
         // assign events
         Object.keys(options).forEach(key => {
@@ -22365,7 +22369,7 @@ class w2window extends w2base {
         query(window).on('resize', this.handleResize)
         // initialize move
         tmp = {
-            resizing : false,
+            moving : false,
             mvMove   : mvMove,
             mvStop   : mvStop
         }
@@ -22379,9 +22383,8 @@ class w2window extends w2base {
             self.status = 'moving'
             let rect = query(self.box).get(0).getBoundingClientRect()
             Object.assign(tmp, {
-                resizing: true,
+                moving: true,
                 isLocked: query(self.box).find(':scope > .w2ui-lock').length == 1 ? true : false,
-                //isLocked: query(self.box).find('> .w2ui-lock').length == 1 ? true : false,
                 x       : evt.screenX,
                 y       : evt.screenY,
                 pos_x   : rect.x,
@@ -22395,7 +22398,7 @@ class w2window extends w2base {
             if (evt.preventDefault) evt.preventDefault(); else return false
         }
         function mvMove(evt) {
-            if (tmp.resizing != true) return
+            if (tmp.moving != true) return
             if (!evt) evt = window.event
             tmp.div_x = evt.screenX - tmp.x
             tmp.div_y = evt.screenY - tmp.y
@@ -22407,12 +22410,12 @@ class w2window extends w2base {
                 'transition': 'none',
                 'transform' : 'translate3d('+ tmp.div_x +'px, '+ tmp.div_y +'px, 0px)'
             })
-            self.options.moved = true
+            self.options.center = false
             // event after
             edata.finish()
         }
         function mvStop(evt) {
-            if (tmp.resizing != true) return
+            if (tmp.moving != true) return
             if (!evt) evt = window.event
             self.status = 'open'
             tmp.div_x      = (evt.screenX - tmp.x)
@@ -22428,11 +22431,16 @@ class w2window extends w2base {
                     'transition': 'none',
                     'transform' : 'translate3d(0px, 0px, 0px)'
                 })
-            tmp.resizing = false
+            tmp.moving = false
             query(document.body).off('.w2ui-popup')
             if (!tmp.isLocked) self.unlock()
             // trigger event
-            let edata = self.trigger('stop', { target: 'popup', x: x, y: y, originalEvent: evt })
+            let rect = query(self.box).get(0).getBoundingClientRect()
+            self.options.x = rect.x
+            self.options.y = rect.y
+            self.options.width = rect.width
+            self.options.height = rect.height
+            let edata = self.trigger('moved', { target: 'popup', dim: rect, originalEvent: evt })
             // event after
             edata.finish()
         }
@@ -22542,10 +22550,12 @@ class w2window extends w2base {
         if (edata.isCancelled === true) return
         // default behavior
         this.status = 'resizing'
-        let rect = query(this.box).get(0).getBoundingClientRect()
-        this.options.prevSize = rect.width + ':' + rect.height
+        this.prevSize = query(this.box).get(0).getBoundingClientRect()
         // do resize
-        this.resize(10000, 10000, () => {
+        let rect = this.do_fix_dimension_to_screen(0, 0, 10000, 10000)
+        if (this.options.center)
+            rect = this.do_center(rect.x, rect.y, rect.width, rect.height)
+        this.resize(rect.x, rect.y, rect.width, rect.height, () => {
             this.status    = 'open'
             this.options.maximized = true
             edata.finish()
@@ -22553,20 +22563,119 @@ class w2window extends w2base {
     }
     min() {
         if (this.options.maximized !== true) return
-        let size = this.options.prevSize.split(':')
+        let rect = this.prevSize
         // trigger event
         let edata = this.trigger('min', { target: 'popup' })
         if (edata.isCancelled === true) return
         // default behavior
         this.status = 'resizing'
         // do resize
+        rect = this.do_fix_dimension_to_screen(rect.x, rect.y, rect.width, rect.height)
+        if (this.options.center)
+            rect = this.do_center(rect.x, rect.y, rect.width, rect.height)
         this.options.maximized = false
-        this.resize(parseInt(size[0]), parseInt(size[1]), () => {
+        this.resize(parseInt(rect.x), parseInt(rect.y), parseInt(rect.width), parseInt(rect.height), () => {
             this.status = 'open'
-            this.options.prevSize  = null
+            this.prevSize  = null
             edata.finish()
         })
     }
+    resize(x, y, width, height, callBack) {
+        let self = this
+        query(this.box).css({
+            'top'   : y + 'px',
+            'left'  : x + 'px',
+            'width' : width + 'px',
+            'height': height + 'px'
+        })
+        self.resizeMessages()
+        if (typeof callBack == 'function') callBack()
+    }
+    // internal function
+    resizeMessages() {
+        // see if there are messages and resize them
+        query(this.box).find('.w2ui-message').each(msg => {
+            let mopt = msg._msg_options
+            let popup = query(this.box)
+            if (parseInt(mopt.width) < 10) mopt.width = 10
+            if (parseInt(mopt.height) < 10) mopt.height = 10
+            let rect = popup[0].getBoundingClientRect()
+            let titleHeight = parseInt(popup.find('.w2ui-popup-title')[0].clientHeight)
+            let pWidth      = parseInt(rect.width)
+            let pHeight     = parseInt(rect.height)
+            // re-calc width
+            mopt.width = mopt.originalWidth
+            if (mopt.width > pWidth - 10) {
+                mopt.width = pWidth - 10
+            }
+            // re-calc height
+            mopt.height = mopt.originalHeight
+            if (mopt.height > pHeight - titleHeight - 5) {
+                mopt.height = pHeight - titleHeight - 5
+            }
+            if (mopt.originalHeight < 0) mopt.height = pHeight + mopt.originalHeight - titleHeight
+            if (mopt.originalWidth < 0) mopt.width = pWidth + mopt.originalWidth * 2 // x 2 because there is left and right margin
+            query(msg).css({
+                left    : ((pWidth - mopt.width) / 2) + 'px',
+                width   : mopt.width + 'px',
+                height  : mopt.height + 'px'
+            })
+        })
+    }
+    do_fix_dimension_to_screen(x, y, width, height) {
+        let maxW, maxH
+        if (window.innerHeight == undefined) {
+            maxW = document.documentElement.offsetWidth
+            maxH = document.documentElement.offsetHeight
+        } else {
+            maxW = window.innerWidth
+            maxH = window.innerHeight
+        }
+        if (maxW > width) {
+            if (x + width > maxW) {
+                x = maxW - width
+            }
+        } else if (maxW <= width) {
+            x = 0
+            width = maxW
+        }
+        if (maxH > height) {
+            if (y + height > maxH) {
+                y = maxH - height
+            }
+        } else if (maxH <= height) {
+            y = 0
+            height = maxH
+        }
+        return {x, y, width, height}
+    }
+    do_center(x, y, width, height) {
+        let maxW, maxH
+        if (window.innerHeight == undefined) {
+            maxW = document.documentElement.offsetWidth
+            maxH = document.documentElement.offsetHeight
+        } else {
+            maxW = window.innerWidth
+            maxH = window.innerHeight
+        }
+        if (maxW > width) {
+            x = (maxW - width)/2
+        } else if (maxW < width) {
+            x = 0
+        }
+        if (maxH > height) {
+            y = (maxH - height)/2
+        } else if (maxH < height) {
+            y = 0
+        }
+        return {x, y}
+    }
+
+
+
+
+
+
     clear() {
         query(this.box).find('.w2ui-popup-title').html('')
         query(this.box).find('.w2ui-popup-body').html('')
@@ -22611,80 +22720,5 @@ class w2window extends w2base {
     }
     unlock() {
         w2utils.unlock(query(this.box), 0)
-    }
-    center(width, height, force) {
-        let maxW, maxH
-        if (window.innerHeight == undefined) {
-            maxW = parseInt(document.documentElement.offsetWidth)
-            maxH = parseInt(document.documentElement.offsetHeight)
-        } else {
-            maxW = parseInt(window.innerWidth)
-            maxH = parseInt(window.innerHeight)
-        }
-        width = parseInt(width ?? this.options.width)
-        height = parseInt(height ?? this.options.height)
-        if (this.options.maximized === true) {
-            width = maxW
-            height = maxH
-        }
-        if (maxW - 10 < width) width = maxW - 10
-        if (maxH - 10 < height) height = maxH - 10
-        let top  = (maxH - height) / 2
-        let left = (maxW - width) / 2
-        if (force) {
-            query(this.box).css({
-                'transition': 'none',
-                'top'   : top + 'px',
-                'left'  : left + 'px',
-                'width' : width + 'px',
-                'height': height + 'px'
-            })
-            this.resizeMessages() // then messages resize nicely
-        }
-        return { top, left, width, height }
-    }
-    resize(newWidth, newHeight, callBack) {
-        let self = this
-        // calculate new position
-        let { top, left, width, height } = this.center(newWidth, newHeight)
-        query(this.box).css({
-            'top'   : top + 'px',
-            'left'  : left + 'px',
-            'width' : width + 'px',
-            'height': height + 'px'
-        })
-        self.resizeMessages()
-        if (typeof callBack == 'function') callBack()
-    }
-    // internal function
-    resizeMessages() {
-        // see if there are messages and resize them
-        query(this.box).find('.w2ui-message').each(msg => {
-            let mopt = msg._msg_options
-            let popup = query(this.box)
-            if (parseInt(mopt.width) < 10) mopt.width = 10
-            if (parseInt(mopt.height) < 10) mopt.height = 10
-            let rect = popup[0].getBoundingClientRect()
-            let titleHeight = parseInt(popup.find('.w2ui-popup-title')[0].clientHeight)
-            let pWidth      = parseInt(rect.width)
-            let pHeight     = parseInt(rect.height)
-            // re-calc width
-            mopt.width = mopt.originalWidth
-            if (mopt.width > pWidth - 10) {
-                mopt.width = pWidth - 10
-            }
-            // re-calc height
-            mopt.height = mopt.originalHeight
-            if (mopt.height > pHeight - titleHeight - 5) {
-                mopt.height = pHeight - titleHeight - 5
-            }
-            if (mopt.originalHeight < 0) mopt.height = pHeight + mopt.originalHeight - titleHeight
-            if (mopt.originalWidth < 0) mopt.width = pWidth + mopt.originalWidth * 2 // x 2 because there is left and right margin
-            query(msg).css({
-                left    : ((pWidth - mopt.width) / 2) + 'px',
-                width   : mopt.width + 'px',
-                height  : mopt.height + 'px'
-            })
-        })
     }
 }
