@@ -239,7 +239,8 @@ class w2window extends w2base {
             tmp.div_x = evt.screenX - tmp.x
             tmp.div_y = evt.screenY - tmp.y
             // trigger event
-            let edata = self.trigger('move', { target: 'popup', div_x: tmp.div_x, div_y: tmp.div_y, originalEvent: evt })
+            let rect = query(self.box).get(0).getBoundingClientRect()
+            let edata = self.trigger('moving', { target: 'popup', rect:rect, originalEvent: evt })
             if (edata.isCancelled === true) return
             // default behavior
             query(self.box).css({
@@ -278,7 +279,7 @@ class w2window extends w2base {
             self.options.y = rect.y
             self.options.width = rect.width
             self.options.height = rect.height
-            let edata = self.trigger('moved', { target: 'popup', dim: rect, originalEvent: evt })
+            let edata = self.trigger('moved', { target: 'popup', rect: rect, originalEvent: evt })
             // event after
             edata.finish()
         }
