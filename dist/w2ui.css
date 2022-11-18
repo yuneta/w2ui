@@ -1,4 +1,4 @@
-/* w2ui 2.0.x (nightly) (11/18/2022, 6:01:48 PM) (c) http://w2ui.com, vitmalina@gmail.com */
+/* w2ui 2.0.x (nightly) (11/18/2022, 6:29:08 PM) (c) http://w2ui.com, vitmalina@gmail.com */
 /**
 * TODO:
 *  - remove default styling, only keep w2ui-* styles
@@ -3816,12 +3816,6 @@ textarea.w2ui-error {
   border-bottom-left-radius: 6px;
   border-bottom-right-radius: 6px;
   bottom: 0px;
-}
-.w2ui-window .w2ui-window-resize {
-  position: absolute;
-  right: 0px;
-  bottom: 0px;
-  z-index: 1000;
 }
 .w2ui-window .w2ui-icon-resize {
   position: absolute;

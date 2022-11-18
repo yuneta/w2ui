@@ -1,4 +1,4 @@
-/* w2ui 2.0.x (nightly) (11/18/2022, 6:01:48 PM) (c) http://w2ui.com, vitmalina@gmail.com */
+/* w2ui 2.0.x (nightly) (11/18/2022, 6:29:08 PM) (c) http://w2ui.com, vitmalina@gmail.com */
 /**
  * Part of w2ui 2.0 library
  *  - Dependencies: w2utils
@@ -22224,7 +22224,6 @@ class w2window extends w2base {
         this.onKeydown = null
         this.onAction = null
         this.onMove = null
-        this.tmp = {}
         // event handler for resize
         this.handleResize = (event) => {
             // Browser window resize
@@ -22288,7 +22287,6 @@ class w2window extends w2base {
                 this[key] = options[key]
             }
         })
-        let edata, tmp
         // convert action arrays into buttons
         if (options.actions != null && !options.buttons) {
             options.buttons = ''
@@ -22313,7 +22311,7 @@ class w2window extends w2base {
             })
         }
         // trigger event
-        edata = this.trigger('open', { target: 'window', present: false })
+        let edata = this.trigger('open', { target: 'window', present: false })
         if (edata.isCancelled === true) return
         this.status = 'opening'
         // output message
@@ -22342,8 +22340,8 @@ class w2window extends w2base {
                 </div>
             </div>
             <div class="w2ui-window-buttons" style="${!options.buttons ? 'display: none' : ''}"></div>
-            <div class="w2ui-window-button" style="${!options.resizable ? 'display: none' : ''}">
-                <span class="w2ui-icon w2ui-icon-resize w2ui-eaction" data-mousedown="stop" data-click="toggle"></span>
+            <div class="w2ui-window-button w2ui-window-resize" style="${!options.resizable ? 'display: none' : ''}">
+                <span class="w2ui-icon w2ui-icon-resize"></span>
             </div>
             <span name="hidden-last" tabindex="0" style="position: absolute; top: -100px"></span>
         `
@@ -22371,7 +22369,7 @@ class w2window extends w2base {
         }
         query(window).on('resize', this.handleResize)
         // initialize move
-        tmp = {
+        let tmp_move = {
             moving : false,
             mvMove   : mvMove,
             mvStop   : mvStop
@@ -22379,13 +22377,22 @@ class w2window extends w2base {
         query(this.box).find('.w2ui-window-title').on('mousedown', function(event) {
             if (!self.options.maximized) mvStart(event)
         })
+        // initialize resizing
+        let tmp_resize = {
+            resizing : false,
+            rsMove   : rsMove,
+            rsStop   : rsStop
+        }
+        query(this.box).find('.w2ui-window-resize').on('mousedown', function(event) {
+            if (!self.options.maximized) rsStart(event)
+        })
         return
-        // handlers
+        // handlers moving
         function mvStart(evt) {
             if (!evt) evt = window.event
             self.status = 'moving'
             let rect = query(self.box).get(0).getBoundingClientRect()
-            Object.assign(tmp, {
+            Object.assign(tmp_move, {
                 moving: true,
                 isLocked: query(self.box).find(':scope > .w2ui-lock').length == 1 ? true : false,
                 x       : evt.screenX,
@@ -22393,18 +22400,18 @@ class w2window extends w2base {
                 pos_x   : rect.x,
                 pos_y   : rect.y,
             })
-            if (!tmp.isLocked) self.lock({ opacity: 0 })
+            if (!tmp_move.isLocked) self.lock({ opacity: 0 })
             query(document.body)
-                .on('mousemove.w2ui-window', tmp.mvMove)
-                .on('mouseup.w2ui-window', tmp.mvStop)
+                .on('mousemove.w2ui-window', tmp_move.mvMove)
+                .on('mouseup.w2ui-window', tmp_move.mvStop)
             if (evt.stopPropagation) evt.stopPropagation(); else evt.cancelBubble = true
             if (evt.preventDefault) evt.preventDefault(); else return false
         }
         function mvMove(evt) {
-            if (tmp.moving != true) return
+            if (tmp_move.moving != true) return
             if (!evt) evt = window.event
-            tmp.div_x = evt.screenX - tmp.x
-            tmp.div_y = evt.screenY - tmp.y
+            tmp_move.div_x = evt.screenX - tmp_move.x
+            tmp_move.div_y = evt.screenY - tmp_move.y
             // trigger event
             let rect = query(self.box).get(0).getBoundingClientRect()
             let edata = self.trigger('moving', { target: 'window', rect:rect, originalEvent: evt })
@@ -22412,20 +22419,20 @@ class w2window extends w2base {
             // default behavior
             query(self.box).css({
                 'transition': 'none',
-                'transform' : 'translate3d('+ tmp.div_x +'px, '+ tmp.div_y +'px, 0px)'
+                'transform' : 'translate3d('+ tmp_move.div_x +'px, '+ tmp_move.div_y +'px, 0px)'
             })
             self.options.center = false
             // event after
             edata.finish()
         }
         function mvStop(evt) {
-            if (tmp.moving != true) return
+            if (tmp_move.moving != true) return
             if (!evt) evt = window.event
             self.status = 'open'
-            tmp.div_x      = (evt.screenX - tmp.x)
-            tmp.div_y      = (evt.screenY - tmp.y)
-            let x = tmp.pos_x + tmp.div_x
-            let y = tmp.pos_y + tmp.div_y
+            tmp_move.div_x      = (evt.screenX - tmp_move.x)
+            tmp_move.div_y      = (evt.screenY - tmp_move.y)
+            let x = tmp_move.pos_x + tmp_move.div_x
+            let y = tmp_move.pos_y + tmp_move.div_y
             query(self.box)
                 .css({
                     'left': x + 'px',
@@ -22435,9 +22442,77 @@ class w2window extends w2base {
                     'transition': 'none',
                     'transform' : 'translate3d(0px, 0px, 0px)'
                 })
-            tmp.moving = false
+            tmp_move.moving = false
             query(document.body).off('.w2ui-window')
-            if (!tmp.isLocked) self.unlock()
+            if (!tmp_move.isLocked) self.unlock()
+            // trigger event
+            let rect = query(self.box).get(0).getBoundingClientRect()
+            self.options.x = rect.x
+            self.options.y = rect.y
+            self.options.width = rect.width
+            self.options.height = rect.height
+            let edata = self.trigger('moved', { target: 'window', rect: rect, originalEvent: evt })
+            // event after
+            edata.finish()
+        }
+        // handlers resizing
+        function rsStart(evt) {
+            if (!evt) evt = window.event
+            self.status = 'resizing'
+            let rect = query(self.box).get(0).getBoundingClientRect()
+            Object.assign(tmp_resize, {
+                resizing: true,
+                isLocked: query(self.box).find(':scope > .w2ui-lock').length == 1 ? true : false,
+                x       : evt.screenX,
+                y       : evt.screenY,
+                pos_x   : rect.x,
+                pos_y   : rect.y,
+            })
+            if (!tmp_resize.isLocked) self.lock({ opacity: 0 })
+            query(document.body)
+                .on('mousemove.w2ui-window', tmp_resize.rsMove)
+                .on('mouseup.w2ui-window', tmp_resize.rsStop)
+            if (evt.stopPropagation) evt.stopPropagation(); else evt.cancelBubble = true
+            if (evt.preventDefault) evt.preventDefault(); else return false
+        }
+        function rsMove(evt) {
+            if (tmp_resize.resizing != true) return
+            if (!evt) evt = window.event
+            tmp_resize.div_x = evt.screenX - tmp_resize.x
+            tmp_resize.div_y = evt.screenY - tmp_resize.y
+            // trigger event
+            let rect = query(self.box).get(0).getBoundingClientRect()
+            let edata = self.trigger('resizing', { target: 'window', rect:rect, originalEvent: evt })
+            if (edata.isCancelled === true) return
+            // default behavior
+            query(self.box).css({
+                'transition': 'none',
+                'transform' : 'scale('+ tmp_resize.div_x +'px, '+ tmp_resize.div_y +'px)'
+            })
+            self.options.center = false
+            // event after
+            edata.finish()
+        }
+        function rsStop(evt) {
+            if (tmp_resize.resizing != true) return
+            if (!evt) evt = window.event
+            self.status = 'open'
+            tmp_resize.div_x      = (evt.screenX - tmp_resize.x)
+            tmp_resize.div_y      = (evt.screenY - tmp_resize.y)
+            let x = tmp_resize.pos_x + tmp_resize.div_x
+            let y = tmp_resize.pos_y + tmp_resize.div_y
+            query(self.box)
+                .css({
+                    'width': x + 'px',
+                    'height' : y + 'px'
+                })
+                .css({
+                    'transition': 'none',
+                    'transform' : 'scale(0px, 0px)'
+                })
+            tmp_resize.resizing = false
+            query(document.body).off('.w2ui-window')
+            if (!tmp_resize.isLocked) self.unlock()
             // trigger event
             let rect = query(self.box).get(0).getBoundingClientRect()
             self.options.x = rect.x
