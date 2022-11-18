@@ -1,4 +1,4 @@
-/* w2ui 2.0.x (nightly) (11/18/2022, 11:37:25 AM) (c) http://w2ui.com, vitmalina@gmail.com */
+/* w2ui 2.0.x (nightly) (11/18/2022, 4:40:40 PM) (c) http://w2ui.com, vitmalina@gmail.com */
 /**
  * Part of w2ui 2.0 library
  *  - Dependencies: w2utils
@@ -22196,9 +22196,9 @@ class w2window extends w2base {
         super(options.name)
         this.defaults = {
             title: '',
-            text: '',           // just a text (will be centered)
+            text: '',           // just a text (will be centered), preference over body
             body: '',
-            buttons: '',
+            buttons: '',        // html code of buttons, preference over actions
             x: 300,
             y: 20,
             width: 600,
@@ -22207,13 +22207,13 @@ class w2window extends w2base {
             actions: null,      // actions object
             style: '',          // style of the message div
             modal: false,
-            maximized: false,   // this is a flag to show the state - to open the popup maximized use openMaximized instead
-            keyboard: true,     // will close popup on esc if not modal
+            maximized: false,   // this is a flag to show the state - to open the window maximized use openMaximized instead
+            keyboard: true,     // will close window on esc if not modal
             showClose: true,
             showMax: false,
-            transition: null,
             openMaximized: false,
             center: false,
+            resizable: true
         }
         this.status = 'opening' // string that describes current status
         this.onOpen = null
@@ -22239,7 +22239,7 @@ class w2window extends w2base {
             this.box = '#' + this.name
         }
         // check if window already exists
-        if (query(this.box) && query(this.box).find('.w2ui-popup').length > 0) {
+        if (query(this.box) && query(this.box).find('.w2ui-window').length > 0) {
             console.log(`w2window already exists: ${this.box}`)
             return
         }
@@ -22270,16 +22270,16 @@ class w2window extends w2base {
         if (!this.box) {
             // Create new container
             id = this.name
-            msg = `<div id="${id}" class="w2ui-popup" style="${w2utils.stripSpaces(styles)}"></div>`
+            msg = `<div id="${id}" class="w2ui-window" style="${w2utils.stripSpaces(styles)}"></div>`
             query('body').append(msg)
             this.box = query('#' + id).get(0)
         } else {
-            // TODO check this
+            // TODO code not proved
             this.box.style.cssText = w2utils.stripSpaces(styles)
-            this.box.addClass('w2ui-popup')
+            this.box.addClass('w2ui-window')
         }
         if (!this.box) {
-            console.log('w2window box is null')
+            console.log('w2window: no container')
             return
         }
         // assign events
@@ -22313,7 +22313,7 @@ class w2window extends w2base {
             })
         }
         // trigger event
-        edata = this.trigger('open', { target: 'popup', present: false })
+        edata = this.trigger('open', { target: 'window', present: false })
         if (edata.isCancelled === true) return
         this.status = 'opening'
         // output message
@@ -22322,12 +22322,12 @@ class w2window extends w2base {
         })
         let btn = ''
         if (options.showClose) {
-            btn += `<div class="w2ui-popup-button w2ui-popup-close">
+            btn += `<div class="w2ui-window-button w2ui-window-close">
                         <span class="w2ui-icon w2ui-icon-cross w2ui-eaction" data-mousedown="stop" data-click="close"></span>
                     </div>`
         }
         if (options.showMax) {
-            btn += `<div class="w2ui-popup-button w2ui-popup-max">
+            btn += `<div class="w2ui-window-button w2ui-window-max">
                         <span class="w2ui-icon w2ui-icon-box w2ui-eaction" data-mousedown="stop" data-click="toggle"></span>
                     </div>`
         }
@@ -22335,22 +22335,25 @@ class w2window extends w2base {
         styles = `${!options.title ? 'top: 0px !important;' : ''} ${!options.buttons ? 'bottom: 0px !important;' : ''}`
         msg = `
             <span name="hidden-first" tabindex="0" style="position: absolute; top: -100px"></span>
-            <div class="w2ui-popup-title" style="${!options.title ? 'display: none' : ''}">${btn}</div>
+            <div class="w2ui-window-title" style="${!options.title ? 'display: none' : ''}">${btn}</div>
             <div class="w2ui-box" style="${styles}">
-                <div class="w2ui-popup-body ${!options.title || ' w2ui-popup-no-title'}
-                    ${!options.buttons || ' w2ui-popup-no-buttons'}" style="${options.style}">
+                <div class="w2ui-window-body ${!options.title || ' w2ui-window-no-title'}
+                    ${!options.buttons || ' w2ui-window-no-buttons'}" style="${options.style}">
                 </div>
             </div>
-            <div class="w2ui-popup-buttons" style="${!options.buttons ? 'display: none' : ''}"></div>
+            <div class="w2ui-window-buttons" style="${!options.buttons ? 'display: none' : ''}"></div>
+            <div class="w2ui-window-button w2ui-window-resize" style="${!options.resizable ? 'display: none' : ''}">
+                <span class="w2ui-icon w2ui-icon-resize w2ui-eaction" data-mousedown="stop" data-click="toggle"></span>
+            </div>
             <span name="hidden-last" tabindex="0" style="position: absolute; top: -100px"></span>
         `
         query(this.box).html(msg)
-        if (options.title) query(this.box).find('.w2ui-popup-title').append(w2utils.lang(options.title))
-        if (options.buttons) query(this.box).find('.w2ui-popup-buttons').append(options.buttons)
-        if (options.body) query(this.box).find('.w2ui-popup-body').append(options.body)
+        if (options.title) query(this.box).find('.w2ui-window-title').append(w2utils.lang(options.title))
+        if (options.buttons) query(this.box).find('.w2ui-window-buttons').append(options.buttons)
+        if (options.body) query(this.box).find('.w2ui-window-body').append(options.body)
         // allow element to render
         w2utils.bindEvents(query(this.box).find('.w2ui-eaction'), this)
-        query(this.box).find('.w2ui-popup-body').show()
+        query(this.box).find('.w2ui-window-body').show()
         this.status = 'open'
         self.setFocus(options.focus)
         // event after
@@ -22373,7 +22376,7 @@ class w2window extends w2base {
             mvMove   : mvMove,
             mvStop   : mvStop
         }
-        query(this.box).find('.w2ui-popup-title').on('mousedown', function(event) {
+        query(this.box).find('.w2ui-window-title').on('mousedown', function(event) {
             if (!self.options.maximized) mvStart(event)
         })
         return
@@ -22392,8 +22395,8 @@ class w2window extends w2base {
             })
             if (!tmp.isLocked) self.lock({ opacity: 0 })
             query(document.body)
-                .on('mousemove.w2ui-popup', tmp.mvMove)
-                .on('mouseup.w2ui-popup', tmp.mvStop)
+                .on('mousemove.w2ui-window', tmp.mvMove)
+                .on('mouseup.w2ui-window', tmp.mvStop)
             if (evt.stopPropagation) evt.stopPropagation(); else evt.cancelBubble = true
             if (evt.preventDefault) evt.preventDefault(); else return false
         }
@@ -22404,7 +22407,7 @@ class w2window extends w2base {
             tmp.div_y = evt.screenY - tmp.y
             // trigger event
             let rect = query(self.box).get(0).getBoundingClientRect()
-            let edata = self.trigger('moving', { target: 'popup', rect:rect, originalEvent: evt })
+            let edata = self.trigger('moving', { target: 'window', rect:rect, originalEvent: evt })
             if (edata.isCancelled === true) return
             // default behavior
             query(self.box).css({
@@ -22433,7 +22436,7 @@ class w2window extends w2base {
                     'transform' : 'translate3d(0px, 0px, 0px)'
                 })
             tmp.moving = false
-            query(document.body).off('.w2ui-popup')
+            query(document.body).off('.w2ui-window')
             if (!tmp.isLocked) self.unlock()
             // trigger event
             let rect = query(self.box).get(0).getBoundingClientRect()
@@ -22441,7 +22444,7 @@ class w2window extends w2base {
             self.options.y = rect.y
             self.options.width = rect.width
             self.options.height = rect.height
-            let edata = self.trigger('moved', { target: 'popup', rect: rect, originalEvent: evt })
+            let edata = self.trigger('moved', { target: 'window', rect: rect, originalEvent: evt })
             // event after
             edata.finish()
         }
@@ -22451,7 +22454,7 @@ class w2window extends w2base {
     }
     close() {
         // trigger event
-        let edata = this.trigger('close', { target: 'popup' })
+        let edata = this.trigger('close', { target: 'window' })
         if (edata.isCancelled === true) return
         query(this.box).remove()
         // restore active
@@ -22507,7 +22510,7 @@ class w2window extends w2base {
         let click = this.options.actions[action]
         if (click instanceof Object && click.onClick) click = click.onClick
         // event before
-        let edata = this.trigger('action', { action, target: 'popup', self: this,
+        let edata = this.trigger('action', { action, target: 'window', self: this,
             originalEvent: event, value: this.input ? this.input.value : null })
         if (edata.isCancelled === true) return
         // default actions
@@ -22518,7 +22521,7 @@ class w2window extends w2base {
     keydown(event) {
         if (this.options && !this.options.keyboard) return
         // trigger event
-        let edata = this.trigger('keydown', { target: 'popup', originalEvent: event })
+        let edata = this.trigger('keydown', { target: 'window', originalEvent: event })
         if (edata.isCancelled === true) return
         // default behavior
         switch (event.keyCode) {
@@ -22537,7 +22540,7 @@ class w2window extends w2base {
         edata.finish()
     }
     toggle() {
-        let edata = this.trigger('toggle', { target: 'popup' })
+        let edata = this.trigger('toggle', { target: 'window' })
         if (edata.isCancelled === true) return
         // default action
         if (this.options.maximized === true) this.min(); else this.max()
@@ -22547,7 +22550,7 @@ class w2window extends w2base {
     max() {
         if (this.options.maximized === true) return
         // trigger event
-        let edata = this.trigger('max', { target: 'popup' })
+        let edata = this.trigger('max', { target: 'window' })
         if (edata.isCancelled === true) return
         // default behavior
         this.status = 'resizing'
@@ -22566,7 +22569,7 @@ class w2window extends w2base {
         if (this.options.maximized !== true) return
         let rect = this.prevSize
         // trigger event
-        let edata = this.trigger('min', { target: 'popup' })
+        let edata = this.trigger('min', { target: 'window' })
         if (edata.isCancelled === true) return
         // default behavior
         this.status = 'resizing'
@@ -22597,11 +22600,11 @@ class w2window extends w2base {
         // see if there are messages and resize them
         query(this.box).find('.w2ui-message').each(msg => {
             let mopt = msg._msg_options
-            let popup = query(this.box)
+            let window = query(this.box)
             if (parseInt(mopt.width) < 10) mopt.width = 10
             if (parseInt(mopt.height) < 10) mopt.height = 10
-            let rect = popup[0].getBoundingClientRect()
-            let titleHeight = parseInt(popup.find('.w2ui-popup-title')[0].clientHeight)
+            let rect = window[0].getBoundingClientRect()
+            let titleHeight = parseInt(window.find('.w2ui-window-title')[0].clientHeight)
             let pWidth      = parseInt(rect.width)
             let pHeight     = parseInt(rect.height)
             // re-calc width
@@ -22671,16 +22674,10 @@ class w2window extends w2base {
         }
         return {x, y}
     }
-
-
-
-
-
-
     clear() {
-        query(this.box).find('.w2ui-popup-title').html('')
-        query(this.box).find('.w2ui-popup-body').html('')
-        query(this.box).find('.w2ui-popup-buttons').html('')
+        query(this.box).find('.w2ui-window-title').html('')
+        query(this.box).find('.w2ui-window-body').html('')
+        query(this.box).find('.w2ui-window-buttons').html('')
     }
     setFocus(focus) {
         let box = query(this.box)
@@ -22694,7 +22691,7 @@ class w2window extends w2base {
             let el = box.find('[name=hidden-first]').get(0)
             if (el) el.focus()
         }
-        // keep focus/blur inside popup
+        // keep focus/blur inside window
         query(box).find(sel + ',[name=hidden-first],[name=hidden-last]')
             .off('.keep-focus')
             .on('blur.keep-focus', function (event) {
