@@ -299,17 +299,20 @@ class w2window extends w2base {
         // handlers resizing
         function rsStart(evt) {
             if (!evt) evt = window.event
-console.dir(evt)
             self.status = 'resizing'
             let rect = query(self.box).get(0).getBoundingClientRect()
+
             Object.assign(tmp_resize, {
                 resizing: true,
                 isLocked: query(self.box).find(':scope > .w2ui-lock').length == 1 ? true : false,
-                x       : evt.screenX,
-                y       : evt.screenY,
-                pos_x   : rect.x,
-                pos_y   : rect.y,
+                width   : rect.width,
+                height  : rect.height,
+                pageX: evt.pageX,
+                pageY: evt.pageY,
+                rel_w: 0,
+                rel_h: 0,
             })
+
             if (!tmp_resize.isLocked) self.lock({ opacity: 0 })
             query(document.body)
                 .on('mousemove.w2ui-window', tmp_resize.rsMove)
@@ -321,17 +324,21 @@ console.dir(evt)
         function rsMove(evt) {
             if (tmp_resize.resizing != true) return
             if (!evt) evt = window.event
-            tmp_resize.div_x = evt.screenX - tmp_resize.x
-            tmp_resize.div_y = evt.screenY - tmp_resize.y
+
+            tmp_resize.rel_w = evt.pageX - tmp_resize.pageX
+            tmp_resize.rel_h = evt.pageY - tmp_resize.pageY
+
             // trigger event
-            let rect = query(self.box).get(0).getBoundingClientRect()
+            let rect = query(self.box).get(0).getBoundingClientRect() // TODO unuseful
             let edata = self.trigger('resizing', { target: 'window', rect:rect, originalEvent: evt })
             if (edata.isCancelled === true) return
             // default behavior
+
             query(self.box).css({
-                'transition': 'none',
-                'transform' : 'scale('+ tmp_resize.div_x +'px, '+ tmp_resize.div_y +'px)'
+                'width' : (tmp_resize.width + tmp_resize.rel_w) +'px',
+                'height': (tmp_resize.height + tmp_resize.rel_h) +'px',
             })
+
             self.options.center = false
             // event after
             edata.finish()
@@ -341,30 +348,25 @@ console.dir(evt)
             if (tmp_resize.resizing != true) return
             if (!evt) evt = window.event
             self.status = 'open'
-            tmp_resize.div_x      = (evt.screenX - tmp_resize.x)
-            tmp_resize.div_y      = (evt.screenY - tmp_resize.y)
-            let x = tmp_resize.pos_x + tmp_resize.div_x
-            let y = tmp_resize.pos_y + tmp_resize.div_y
-            query(self.box)
-                .css({
-                    'width': x + 'px',
-                    'height' : y + 'px'
-                })
-                .css({
-                    'transition': 'none',
-                    'transform' : 'scale(0px, 0px)'
-                })
-            tmp_resize.resizing = false
+
+            tmp_resize.rel_w = evt.pageX - tmp_resize.pageX
+            tmp_resize.rel_h = evt.pageY - tmp_resize.pageY
+
+            query(self.box).css({
+                'width' : (tmp_resize.width + tmp_resize.rel_w) +'px',
+                'height': (tmp_resize.height + tmp_resize.rel_h) +'px',
+            })
+
             query(document.body).off('.w2ui-window')
             if (!tmp_resize.isLocked) self.unlock()
 
             // trigger event
-            let rect = query(self.box).get(0).getBoundingClientRect()
+            rect = query(self.box).get(0).getBoundingClientRect()
             self.options.x = rect.x
             self.options.y = rect.y
             self.options.width = rect.width
             self.options.height = rect.height
-            let edata = self.trigger('moved', { target: 'window', rect: rect, originalEvent: evt })
+            let edata = self.trigger('resized', { target: 'window', rect: rect, originalEvent: evt })
             // event after
             edata.finish()
         }
