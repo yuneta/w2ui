@@ -299,6 +299,7 @@ class w2window extends w2base {
         // handlers resizing
         function rsStart(evt) {
             if (!evt) evt = window.event
+console.dir(evt)
             self.status = 'resizing'
             let rect = query(self.box).get(0).getBoundingClientRect()
             Object.assign(tmp_resize, {
