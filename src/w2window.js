@@ -16,9 +16,9 @@ class w2window extends w2base {
         super(options.name)
         this.defaults = {
             title: '',
-            text: '',           // just a text (will be centered)
+            text: '',           // just a text (will be centered), preference over body
             body: '',
-            buttons: '',
+            buttons: '',        // html code of buttons, preference over actions
             x: 300,
             y: 20,
             width: 600,
@@ -31,9 +31,9 @@ class w2window extends w2base {
             keyboard: true,     // will close popup on esc if not modal
             showClose: true,
             showMax: false,
-            transition: null,
             openMaximized: false,
             center: false,
+            resizable: true
         }
         this.status = 'opening' // string that describes current status
         this.onOpen = null
@@ -99,12 +99,12 @@ class w2window extends w2base {
             query('body').append(msg)
             this.box = query('#' + id).get(0)
         } else {
-            // TODO check this
+            // TODO code not proved
             this.box.style.cssText = w2utils.stripSpaces(styles)
             this.box.addClass('w2ui-popup')
         }
         if (!this.box) {
-            console.log('w2window box is null')
+            console.log('w2window: no container')
             return
         }
 
