@@ -1,4 +1,4 @@
-/* w2ui 2.0.x (nightly) (11/18/2022, 9:14:49 PM) (c) http://w2ui.com, vitmalina@gmail.com */
+/* w2ui 2.0.x (nightly) (11/18/2022, 9:40:59 PM) (c) http://w2ui.com, vitmalina@gmail.com */
 /**
  * Part of w2ui 2.0 library
  *  - Dependencies: w2utils
@@ -22394,13 +22394,11 @@ class w2window extends w2base {
             let rect = query(self.box).get(0).getBoundingClientRect()
             Object.assign(tmp_move, {
                 moving: true,
-                isLocked: query(self.box).find(':scope > .w2ui-lock').length == 1 ? true : false,
                 x       : evt.screenX,
                 y       : evt.screenY,
                 pos_x   : rect.x,
                 pos_y   : rect.y,
             })
-            if (!tmp_move.isLocked) self.lock({ opacity: 0 })
             query(document.body)
                 .on('mousemove.w2ui-window', tmp_move.mvMove)
                 .on('mouseup.w2ui-window', tmp_move.mvStop)
@@ -22444,7 +22442,6 @@ class w2window extends w2base {
                 })
             tmp_move.moving = false
             query(document.body).off('.w2ui-window')
-            if (!tmp_move.isLocked) self.unlock()
             // trigger event
             let rect = query(self.box).get(0).getBoundingClientRect()
             self.options.x = rect.x
@@ -22460,10 +22457,8 @@ class w2window extends w2base {
             if (!evt) evt = window.event
             self.status = 'resizing'
             let rect = query(self.box).get(0).getBoundingClientRect()
-            console.dir(rect)
             Object.assign(tmp_resize, {
                 resizing: true,
-                isLocked: query(self.box).find(':scope > .w2ui-lock').length == 1 ? true : false,
                 width   : rect.width,
                 height  : rect.height,
                 pageX: evt.pageX,
@@ -22471,7 +22466,6 @@ class w2window extends w2base {
                 rel_w: 0,
                 rel_h: 0,
             })
-            if (!tmp_resize.isLocked) self.lock({ opacity: 0 })
             query(document.body)
                 .on('mousemove.w2ui-window', tmp_resize.rsMove)
                 .on('mouseup.w2ui-window', tmp_resize.rsStop)
@@ -22507,7 +22501,6 @@ class w2window extends w2base {
                 'height': (tmp_resize.height + tmp_resize.rel_h) +'px',
             })
             query(document.body).off('.w2ui-window')
-            if (!tmp_resize.isLocked) self.unlock()
             // trigger event
             rect = query(self.box).get(0).getBoundingClientRect()
             self.options.x = rect.x
@@ -22780,13 +22773,5 @@ class w2window extends w2base {
                     }
                 }, 1)
             })
-    }
-    lock(msg, showSpinner) {
-        let args = Array.from(arguments)
-        args.unshift(query(this.box))
-        w2utils.lock(...args)
-    }
-    unlock() {
-        w2utils.unlock(query(this.box), 0)
     }
 }
