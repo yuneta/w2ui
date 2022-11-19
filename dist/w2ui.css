@@ -1,4 +1,4 @@
-/* w2ui 2.0.x (nightly) (11/18/2022, 9:40:59 PM) (c) http://w2ui.com, vitmalina@gmail.com */
+/* w2ui 2.0.x (nightly) (11/19/2022, 8:41:43 AM) (c) http://w2ui.com, vitmalina@gmail.com */
 /**
 * TODO:
 *  - remove default styling, only keep w2ui-* styles
@@ -3784,7 +3784,7 @@ textarea.w2ui-error {
 .w2ui-window .w2ui-window-body {
   font-size: 12px;
   line-height: 130%;
-  padding: 0px 7px 7px 7px;
+  padding: 0px;
   color: #000;
   background-color: #fafafa;
   position: absolute;

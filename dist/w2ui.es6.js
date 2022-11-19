@@ -1,4 +1,4 @@
-/* w2ui 2.0.x (nightly) (11/18/2022, 9:40:59 PM) (c) http://w2ui.com, vitmalina@gmail.com */
+/* w2ui 2.0.x (nightly) (11/19/2022, 8:41:43 AM) (c) http://w2ui.com, vitmalina@gmail.com */
 /**
  * Part of w2ui 2.0 library
  *  - Dependencies: w2utils
@@ -22532,6 +22532,9 @@ class w2window extends w2base {
         query(window).off('resize', this.handleResize)
         w2utils.unlock(document.body, 0)
     }
+    get_container() {
+        return query(this.box).find('.w2ui-window-body')
+    }
     load(options) {
         return new Promise((resolve, reject) => {
             if (typeof options == 'string') {
@@ -22727,15 +22730,15 @@ class w2window extends w2base {
         }
         if (maxW > width) {
             x = (maxW - width)/2
-        } else if (maxW < width) {
+        } else if (maxW <= width) {
             x = 0
         }
         if (maxH > height) {
             y = (maxH - height)/2
-        } else if (maxH < height) {
+        } else if (maxH <= height) {
             y = 0
         }
-        return {x, y}
+        return {x, y, width, height}
     }
     clear() {
         query(this.box).find('.w2ui-window-title').html('')

@@ -388,6 +388,10 @@ class w2window extends w2base {
         w2utils.unlock(document.body, 0)
     }
 
+    get_container() {
+        return query(this.box).find('.w2ui-window-body')
+    }
+
     load(options) {
         return new Promise((resolve, reject) => {
             if (typeof options == 'string') {
