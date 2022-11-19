@@ -597,17 +597,17 @@ class w2window extends w2base {
 
         if (maxW > width) {
             x = (maxW - width)/2
-        } else if (maxW < width) {
+        } else if (maxW <= width) {
             x = 0
         }
 
         if (maxH > height) {
             y = (maxH - height)/2
-        } else if (maxH < height) {
+        } else if (maxH <= height) {
             y = 0
         }
 
-        return {x, y}
+        return {x, y, width, height}
     }
 
     clear() {
