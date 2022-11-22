@@ -143,9 +143,11 @@ class w2window extends w2base {
         if (edata.isCancelled === true) return
         this.status = 'opening'
         // output message
-        w2utils.lock(document.body, {
-            onClick: options.modal ? null : () => { this.destroy() }
-        })
+        if (options.modal) {
+            w2utils.lock(document.body, {
+                onClick: null
+            })
+        }
         let btn = ''
         if (options.showClose) {
             btn += `<div class="w2ui-window-button w2ui-window-close">
@@ -455,13 +457,7 @@ class w2window extends w2base {
         switch (event.keyCode) {
             case 27:
                 event.preventDefault()
-                if (query(this.box).find('.w2ui-message').length == 0) {
-                    if (this.options.cancelAction) {
-                        this.action(this.options.cancelAction)
-                    } else {
-                        this.destroy()
-                    }
-                }
+                this.destroy()
                 break
         }
         // event after
