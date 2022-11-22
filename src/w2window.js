@@ -239,6 +239,7 @@ class w2window extends w2base {
             query(document.body)
                 .on('mousemove.w2ui-window', tmp_move.mvMove)
                 .on('mouseup.w2ui-window', tmp_move.mvStop)
+
             if (evt.stopPropagation) evt.stopPropagation(); else evt.cancelBubble = true
             if (evt.preventDefault) evt.preventDefault(); else return false
         }
@@ -312,6 +313,7 @@ class w2window extends w2base {
             query(document.body)
                 .on('mousemove.w2ui-window', tmp_resize.rsMove)
                 .on('mouseup.w2ui-window', tmp_resize.rsStop)
+
             if (evt.stopPropagation) evt.stopPropagation(); else evt.cancelBubble = true
             if (evt.preventDefault) evt.preventDefault(); else return false
         }
