@@ -1,4 +1,4 @@
-/* w2ui 2.0.x (nightly) (11/19/2022, 9:10:22 AM) (c) http://w2ui.com, vitmalina@gmail.com */
+/* w2ui 2.0.x (nightly) (11/22/2022, 1:14:19 PM) (c) http://w2ui.com, vitmalina@gmail.com */
 /**
  * Part of w2ui 2.0 library
  *  - Dependencies: w2utils
@@ -22315,9 +22315,11 @@ class w2window extends w2base {
         if (edata.isCancelled === true) return
         this.status = 'opening'
         // output message
-        w2utils.lock(document.body, {
-            onClick: options.modal ? null : () => { this.destroy() }
-        })
+        if (options.modal) {
+            w2utils.lock(document.body, {
+                onClick: null
+            })
+        }
         let btn = ''
         if (options.showClose) {
             btn += `<div class="w2ui-window-button w2ui-window-close">
@@ -22593,13 +22595,7 @@ class w2window extends w2base {
         switch (event.keyCode) {
             case 27:
                 event.preventDefault()
-                if (query(this.box).find('.w2ui-message').length == 0) {
-                    if (this.options.cancelAction) {
-                        this.action(this.options.cancelAction)
-                    } else {
-                        this.destroy()
-                    }
-                }
+                this.destroy()
                 break
         }
         // event after
