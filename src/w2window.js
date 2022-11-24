@@ -44,22 +44,13 @@ class w2window extends w2base {
         this.onKeydown = null
         this.onAction = null
         this.onMove = null
-        // event handler for resize
-        this.handleResize = (event) => {
-            // Browser window resize
-            let rect = {x: options.x, y: options.y, width: options.width, height: options.height}
-            rect = this.do_fix_dimension_to_screen(rect.x, rect.y, rect.width, rect.height)
-            if (this.options.center)
-                rect = this.do_center(rect.x, rect.y, rect.width, rect.height)
-            this.resize(rect.x, rect.y, rect.width, rect.height)
-        }
         this.name = options.name
         if (!this.box) {
             this.box = '#' + this.name
         }
 
         // check if window already exists
-        if (query(this.box) && query(this.box).find('.w2ui-window').length > 0) {
+        if (query(this.box) && query(this.box).hasClass('w2ui-window')) {
             console.log(`w2window already exists: ${this.box}`)
             return
         }
@@ -70,6 +61,16 @@ class w2window extends w2base {
             {}, this.defaults, { title: '', body : '' }, options, { maximized: false }
         )
         this.options = options
+
+        // event handler for resize
+        this.handleResize = (event) => {
+            // Browser window resize
+            let rect = {x: options.x, y: options.y, width: options.width, height: options.height}
+            rect = this.do_fix_dimension_to_screen(rect.x, rect.y, rect.width, rect.height)
+            if (this.options.center)
+                rect = this.do_center(rect.x, rect.y, rect.width, rect.height)
+            this.resize(rect.x, rect.y, rect.width, rect.height)
+        }
 
         this.render(options)
     }
