@@ -395,8 +395,6 @@ class w2window extends w2base {
 
     get_container() {
         return query(this.box).find('.w2ui-window-body')
-        // if (container.length > 0) return container[0]
-        // return null
     }
 
     load(options) {
