@@ -1,4 +1,4 @@
-/* w2ui 2.0.x (nightly) (11/24/2022, 1:58:24 PM) (c) http://w2ui.com, vitmalina@gmail.com */
+/* w2ui 2.0.x (nightly) (11/24/2022, 3:00:23 PM) (c) http://w2ui.com, vitmalina@gmail.com */
 /**
  * Part of w2ui 2.0 library
  *  - Dependencies: w2utils
@@ -22536,6 +22536,8 @@ class w2window extends w2base {
     }
     get_container() {
         return query(this.box).find('.w2ui-window-body')
+        // if (container.length > 0) return container[0]
+        // return null
     }
     load(options) {
         return new Promise((resolve, reject) => {
