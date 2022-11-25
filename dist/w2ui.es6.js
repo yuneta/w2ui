@@ -1,4 +1,4 @@
-/* w2ui 2.0.x (nightly) (11/26/2022, 12:34:29 AM) (c) http://w2ui.com, vitmalina@gmail.com */
+/* w2ui 2.0.x (nightly) (11/26/2022, 12:38:31 AM) (c) http://w2ui.com, vitmalina@gmail.com */
 /**
  * Part of w2ui 2.0 library
  *  - Dependencies: w2utils
