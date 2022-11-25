@@ -152,12 +152,12 @@ class w2window extends w2base {
         let btn = ''
         if (options.showClose) {
             btn += `<div class="w2ui-window-button w2ui-window-close">
-                        <span class="w2ui-xicon w2ui-icon-cross w2ui-eaction" data-pointerdown="stop" data-click="close"></span>
+                        <span class="w2ui-xicon w2ui-icon-cross w2ui-eaction" data-mousedown="stop" data-click="close"></span>
                     </div>`
         }
         if (options.showMax) {
             btn += `<div class="w2ui-window-button w2ui-window-max">
-                        <span class="w2ui-xicon w2ui-icon-box w2ui-eaction" data-pointerdown="stop" data-click="toggle"></span>
+                        <span class="w2ui-xicon w2ui-icon-box w2ui-eaction" data-mousedown="stop" data-click="toggle"></span>
                     </div>`
         }
 
