@@ -214,6 +214,9 @@ class w2window extends w2base {
         query(this.box).find('.w2ui-window-title').on('mousedown', function(event) {
             if (!self.options.maximized) mvStart(event)
         })
+        // query(this.box).find('.w2ui-window-title').on('touchstart', function(event) {
+        //     if (!self.options.maximized) mvStart(event)
+        // })
 
         // initialize resizing
         let tmp_resize = {
@@ -224,6 +227,9 @@ class w2window extends w2base {
         query(this.box).find('.w2ui-window-resize').on('mousedown', function(event) {
             if (!self.options.maximized) rsStart(event)
         })
+        // query(this.box).find('.w2ui-window-resize').on('touchstart', function(event) {
+        //     if (!self.options.maximized) rsStart(event)
+        // })
 
         return
 
@@ -242,6 +248,8 @@ class w2window extends w2base {
             query(document.body)
                 .on('mousemove.w2ui-window', tmp_move.mvMove)
                 .on('mouseup.w2ui-window', tmp_move.mvStop)
+                // .on('touchmove.w2ui-window', tmp_move.mvMove)
+                // .on('touchend.w2ui-window', tmp_move.mvStop)
 
             if (evt.stopPropagation) evt.stopPropagation(); else evt.cancelBubble = true
             if (evt.preventDefault) evt.preventDefault(); else return false
@@ -316,6 +324,8 @@ class w2window extends w2base {
             query(document.body)
                 .on('mousemove.w2ui-window', tmp_resize.rsMove)
                 .on('mouseup.w2ui-window', tmp_resize.rsStop)
+                // .on('touchmove.w2ui-window', tmp_resize.rsMove)
+                // .on('touchend.w2ui-window', tmp_resize.rsStop)
 
             if (evt.stopPropagation) evt.stopPropagation(); else evt.cancelBubble = true
             if (evt.preventDefault) evt.preventDefault(); else return false
@@ -356,6 +366,7 @@ class w2window extends w2base {
                 'width' : (tmp_resize.width + tmp_resize.rel_w) +'px',
                 'height': (tmp_resize.height + tmp_resize.rel_h) +'px',
             })
+            query(document.body).off('.w2ui-window')
 
             // trigger event
             let window_rect = query(self.box).get(0).getBoundingClientRect()

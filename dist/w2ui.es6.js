@@ -1,4 +1,4 @@
-/* w2ui 2.0.x (nightly) (11/25/2022, 9:15:11 PM) (c) http://w2ui.com, vitmalina@gmail.com */
+/* w2ui 2.0.x (nightly) (11/25/2022, 9:46:32 PM) (c) http://w2ui.com, vitmalina@gmail.com */
 /**
  * Part of w2ui 2.0 library
  *  - Dependencies: w2utils
@@ -22379,6 +22379,9 @@ class w2window extends w2base {
         query(this.box).find('.w2ui-window-title').on('mousedown', function(event) {
             if (!self.options.maximized) mvStart(event)
         })
+        // query(this.box).find('.w2ui-window-title').on('touchstart', function(event) {
+        //     if (!self.options.maximized) mvStart(event)
+        // })
         // initialize resizing
         let tmp_resize = {
             resizing : false,
@@ -22388,6 +22391,9 @@ class w2window extends w2base {
         query(this.box).find('.w2ui-window-resize').on('mousedown', function(event) {
             if (!self.options.maximized) rsStart(event)
         })
+        // query(this.box).find('.w2ui-window-resize').on('touchstart', function(event) {
+        //     if (!self.options.maximized) rsStart(event)
+        // })
         return
         // handlers moving
         function mvStart(evt) {
@@ -22404,6 +22410,8 @@ class w2window extends w2base {
             query(document.body)
                 .on('mousemove.w2ui-window', tmp_move.mvMove)
                 .on('mouseup.w2ui-window', tmp_move.mvStop)
+                // .on('touchmove.w2ui-window', tmp_move.mvMove)
+                // .on('touchend.w2ui-window', tmp_move.mvStop)
             if (evt.stopPropagation) evt.stopPropagation(); else evt.cancelBubble = true
             if (evt.preventDefault) evt.preventDefault(); else return false
         }
@@ -22471,6 +22479,8 @@ class w2window extends w2base {
             query(document.body)
                 .on('mousemove.w2ui-window', tmp_resize.rsMove)
                 .on('mouseup.w2ui-window', tmp_resize.rsStop)
+                // .on('touchmove.w2ui-window', tmp_resize.rsMove)
+                // .on('touchend.w2ui-window', tmp_resize.rsStop)
             if (evt.stopPropagation) evt.stopPropagation(); else evt.cancelBubble = true
             if (evt.preventDefault) evt.preventDefault(); else return false
         }
