@@ -1,4 +1,4 @@
-/* w2ui 2.0.x (nightly) (11/25/2022, 1:04:20 PM) (c) http://w2ui.com, vitmalina@gmail.com */
+/* w2ui 2.0.x (nightly) (11/25/2022, 9:15:11 PM) (c) http://w2ui.com, vitmalina@gmail.com */
 /**
 * TODO:
 *  - remove default styling, only keep w2ui-* styles
@@ -3787,7 +3787,6 @@ textarea.w2ui-error {
   color: #000;
   background-color: #fafafa;
   position: absolute;
-  overflow: auto;
   width: 100%;
   height: 100%;
 }

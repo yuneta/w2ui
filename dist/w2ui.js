@@ -1,4 +1,4 @@
-/* w2ui 2.0.x (nightly) (11/25/2022, 1:04:20 PM) (c) http://w2ui.com, vitmalina@gmail.com */
+/* w2ui 2.0.x (nightly) (11/25/2022, 9:15:11 PM) (c) http://w2ui.com, vitmalina@gmail.com */
 /**
  * Part of w2ui 2.0 library
  *  - Dependencies: w2utils
@@ -22393,13 +22393,13 @@ class w2window extends w2base {
         function mvStart(evt) {
             if (!evt) evt = window.event
             self.status = 'moving'
-            let rect = query(self.box).get(0).getBoundingClientRect()
+            let window_rect = query(self.box).get(0).getBoundingClientRect()
             Object.assign(tmp_move, {
                 moving: true,
                 x       : evt.screenX,
                 y       : evt.screenY,
-                pos_x   : rect.x,
-                pos_y   : rect.y,
+                pos_x   : window_rect.x,
+                pos_y   : window_rect.y,
             })
             query(document.body)
                 .on('mousemove.w2ui-window', tmp_move.mvMove)
@@ -22413,8 +22413,8 @@ class w2window extends w2base {
             tmp_move.div_x = evt.screenX - tmp_move.x
             tmp_move.div_y = evt.screenY - tmp_move.y
             // trigger event
-            let rect = query(self.box).get(0).getBoundingClientRect()
-            let edata = self.trigger('moving', { target: 'window', rect:rect, originalEvent: evt })
+            let window_rect = query(self.box).get(0).getBoundingClientRect()
+            let edata = self.trigger('moving', { target: 'window', window_rect:window_rect, originalEvent: evt })
             if (edata.isCancelled === true) return
             // default behavior
             query(self.box).css({
@@ -22445,12 +22445,12 @@ class w2window extends w2base {
             tmp_move.moving = false
             query(document.body).off('.w2ui-window')
             // trigger event
-            let rect = query(self.box).get(0).getBoundingClientRect()
-            self.options.x = rect.x
-            self.options.y = rect.y
-            self.options.width = rect.width
-            self.options.height = rect.height
-            let edata = self.trigger('moved', { target: 'window', rect: rect, originalEvent: evt })
+            let window_rect = query(self.box).get(0).getBoundingClientRect()
+            self.options.x = window_rect.x
+            self.options.y = window_rect.y
+            self.options.width = window_rect.width
+            self.options.height = window_rect.height
+            let edata = self.trigger('moved', { target: 'window', window_rect: window_rect, originalEvent: evt })
             // event after
             edata.finish()
         }
@@ -22458,11 +22458,11 @@ class w2window extends w2base {
         function rsStart(evt) {
             if (!evt) evt = window.event
             self.status = 'resizing'
-            let rect = query(self.box).get(0).getBoundingClientRect()
+            let window_rect = query(self.box).get(0).getBoundingClientRect()
             Object.assign(tmp_resize, {
                 resizing: true,
-                width   : rect.width,
-                height  : rect.height,
+                width   : window_rect.width,
+                height  : window_rect.height,
                 pageX: evt.pageX,
                 pageY: evt.pageY,
                 rel_w: 0,
@@ -22480,8 +22480,8 @@ class w2window extends w2base {
             tmp_resize.rel_w = evt.pageX - tmp_resize.pageX
             tmp_resize.rel_h = evt.pageY - tmp_resize.pageY
             // trigger event
-            let rect = query(self.box).get(0).getBoundingClientRect() // TODO unuseful
-            let edata = self.trigger('resizing', { target: 'window', rect:rect, originalEvent: evt })
+            let window_rect = query(self.box).get(0).getBoundingClientRect() // TODO unuseful
+            let edata = self.trigger('resizing', { target: 'window', window_rect:window_rect, originalEvent: evt })
             if (edata.isCancelled === true) return
             // default behavior
             query(self.box).css({
@@ -22504,12 +22504,13 @@ class w2window extends w2base {
             })
             query(document.body).off('.w2ui-window')
             // trigger event
-            rect = query(self.box).get(0).getBoundingClientRect()
-            self.options.x = rect.x
-            self.options.y = rect.y
-            self.options.width = rect.width
-            self.options.height = rect.height
-            let edata = self.trigger('resized', { target: 'window', rect: rect, originalEvent: evt })
+            let window_rect = query(self.box).get(0).getBoundingClientRect()
+            self.options.x = window_rect.x
+            self.options.y = window_rect.y
+            self.options.width = window_rect.width
+            self.options.height = window_rect.height
+            let body_rect = query(self.box).find('.w2ui-window-body').get(0).getBoundingClientRect()
+            let edata = self.trigger('resized', { target: 'window', window_rect: window_rect, body_rect: body_rect, originalEvent: evt })
             // event after
             edata.finish()
         }
