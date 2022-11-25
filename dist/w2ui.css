@@ -1,4 +1,4 @@
-/* w2ui 2.0.x (nightly) (11/25/2022, 12:51:47 PM) (c) http://w2ui.com, vitmalina@gmail.com */
+/* w2ui 2.0.x (nightly) (11/25/2022, 1:04:20 PM) (c) http://w2ui.com, vitmalina@gmail.com */
 /**
 * TODO:
 *  - remove default styling, only keep w2ui-* styles
@@ -3824,7 +3824,7 @@ textarea.w2ui-error {
   bottom: 0px;
   z-index: 1000;
   margin: 0px;
-  padding: 2px;
+  padding: 0 0 3px 0;
 }
 .w2ui-window .w2ui-icon-resize:hover {
   cursor: se-resize;
