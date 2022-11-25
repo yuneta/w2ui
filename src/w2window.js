@@ -357,8 +357,6 @@ class w2window extends w2base {
                 'height': (tmp_resize.height + tmp_resize.rel_h) +'px',
             })
 
-            query(document.body).off('.w2ui-window')
-
             // trigger event
             let window_rect = query(self.box).get(0).getBoundingClientRect()
             self.options.x = window_rect.x
