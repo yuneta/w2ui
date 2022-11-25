@@ -1,4 +1,4 @@
-/* w2ui 2.0.x (nightly) (11/25/2022, 9:46:32 PM) (c) http://w2ui.com, vitmalina@gmail.com */
+/* w2ui 2.0.x (nightly) (11/26/2022, 12:34:29 AM) (c) http://w2ui.com, vitmalina@gmail.com */
 /**
  * Part of w2ui 2.0 library
  *  - Dependencies: w2utils
@@ -22323,12 +22323,12 @@ class w2window extends w2base {
         let btn = ''
         if (options.showClose) {
             btn += `<div class="w2ui-window-button w2ui-window-close">
-                        <span class="w2ui-xicon w2ui-icon-cross w2ui-eaction" data-mousedown="stop" data-click="close"></span>
+                        <span class="w2ui-xicon w2ui-icon-cross w2ui-eaction" data-pointerdown="stop" data-click="close"></span>
                     </div>`
         }
         if (options.showMax) {
             btn += `<div class="w2ui-window-button w2ui-window-max">
-                        <span class="w2ui-xicon w2ui-icon-box w2ui-eaction" data-mousedown="stop" data-click="toggle"></span>
+                        <span class="w2ui-xicon w2ui-icon-box w2ui-eaction" data-pointerdown="stop" data-click="toggle"></span>
                     </div>`
         }
         // insert content
@@ -22376,24 +22376,18 @@ class w2window extends w2base {
             mvMove   : mvMove,
             mvStop   : mvStop
         }
-        query(this.box).find('.w2ui-window-title').on('mousedown', function(event) {
+        query(this.box).find('.w2ui-window-title').on('pointerdown', function(event) {
             if (!self.options.maximized) mvStart(event)
         })
-        // query(this.box).find('.w2ui-window-title').on('touchstart', function(event) {
-        //     if (!self.options.maximized) mvStart(event)
-        // })
         // initialize resizing
         let tmp_resize = {
             resizing : false,
             rsMove   : rsMove,
             rsStop   : rsStop
         }
-        query(this.box).find('.w2ui-window-resize').on('mousedown', function(event) {
+        query(this.box).find('.w2ui-window-resize').on('pointerdown', function(event) {
             if (!self.options.maximized) rsStart(event)
         })
-        // query(this.box).find('.w2ui-window-resize').on('touchstart', function(event) {
-        //     if (!self.options.maximized) rsStart(event)
-        // })
         return
         // handlers moving
         function mvStart(evt) {
@@ -22408,10 +22402,8 @@ class w2window extends w2base {
                 pos_y   : window_rect.y,
             })
             query(document.body)
-                .on('mousemove.w2ui-window', tmp_move.mvMove)
-                .on('mouseup.w2ui-window', tmp_move.mvStop)
-                // .on('touchmove.w2ui-window', tmp_move.mvMove)
-                // .on('touchend.w2ui-window', tmp_move.mvStop)
+                .on('pointermove.w2ui-window', tmp_move.mvMove)
+                .on('pointerup.w2ui-window', tmp_move.mvStop)
             if (evt.stopPropagation) evt.stopPropagation(); else evt.cancelBubble = true
             if (evt.preventDefault) evt.preventDefault(); else return false
         }
@@ -22477,10 +22469,8 @@ class w2window extends w2base {
                 rel_h: 0,
             })
             query(document.body)
-                .on('mousemove.w2ui-window', tmp_resize.rsMove)
-                .on('mouseup.w2ui-window', tmp_resize.rsStop)
-                // .on('touchmove.w2ui-window', tmp_resize.rsMove)
-                // .on('touchend.w2ui-window', tmp_resize.rsStop)
+                .on('pointermove.w2ui-window', tmp_resize.rsMove)
+                .on('pointerup.w2ui-window', tmp_resize.rsStop)
             if (evt.stopPropagation) evt.stopPropagation(); else evt.cancelBubble = true
             if (evt.preventDefault) evt.preventDefault(); else return false
         }
