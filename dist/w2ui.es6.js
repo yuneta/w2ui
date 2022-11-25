@@ -1,4 +1,4 @@
-/* w2ui 2.0.x (nightly) (11/25/2022, 9:25:10 AM) (c) http://w2ui.com, vitmalina@gmail.com */
+/* w2ui 2.0.x (nightly) (11/25/2022, 12:51:47 PM) (c) http://w2ui.com, vitmalina@gmail.com */
 /**
  * Part of w2ui 2.0 library
  *  - Dependencies: w2utils
@@ -22323,12 +22323,12 @@ class w2window extends w2base {
         let btn = ''
         if (options.showClose) {
             btn += `<div class="w2ui-window-button w2ui-window-close">
-                        <span class="w2ui-icon w2ui-icon-cross w2ui-eaction" data-mousedown="stop" data-click="close"></span>
+                        <span class="w2ui-xicon w2ui-icon-cross w2ui-eaction" data-mousedown="stop" data-click="close"></span>
                     </div>`
         }
         if (options.showMax) {
             btn += `<div class="w2ui-window-button w2ui-window-max">
-                        <span class="w2ui-icon w2ui-icon-box w2ui-eaction" data-mousedown="stop" data-click="toggle"></span>
+                        <span class="w2ui-xicon w2ui-icon-box w2ui-eaction" data-mousedown="stop" data-click="toggle"></span>
                     </div>`
         }
         // insert content
@@ -22343,7 +22343,7 @@ class w2window extends w2base {
             </div>
             <div class="w2ui-window-buttons" style="${!options.buttons ? 'display: none' : ''}"></div>
             <div class="w2ui-window-button w2ui-window-resize" style="${!options.resizable ? 'display: none' : ''}">
-                <span class="w2ui-icon w2ui-icon-resize"></span>
+                <span class="w2ui-xicon w2ui-icon-resize"></span>
             </div>
             <span name="hidden-last" tabindex="0" style="position: absolute; top: -100px"></span>
         `
