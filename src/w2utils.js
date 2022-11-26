@@ -2161,6 +2161,7 @@ class Utils {
             let actions = query(el).data()
             Object.keys(actions).forEach(name => {
                 let events = ['click', 'dblclick', 'mouseenter', 'mouseleave', 'mouseover', 'mouseout', 'mousedown', 'mousemove', 'mouseup',
+                    'pointerenter', 'pointerleave', 'pointerover', 'pointerout', 'pointerdown', 'pointermove', 'pointerup',
                     'contextmenu', 'focus', 'focusin', 'focusout', 'blur', 'input', 'change', 'keydown', 'keyup', 'keypress']
                 if (events.indexOf(String(name).toLowerCase()) == -1) {
                     return

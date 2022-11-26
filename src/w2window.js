@@ -183,8 +183,10 @@ class w2window extends w2base {
         if (options.buttons) query(this.box).find('.w2ui-window-buttons').append(options.buttons)
         if (options.body) query(this.box).find('.w2ui-window-body').append(options.body)
 
-        // allow element to render
+        // Bind events
         w2utils.bindEvents(query(this.box).find('.w2ui-eaction'), this)
+
+        // allow element to render
         query(this.box).find('.w2ui-window-body').show()
 
         this.status = 'open'

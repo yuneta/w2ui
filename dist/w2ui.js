@@ -1,4 +1,4 @@
-/* w2ui 2.0.x (nightly) (11/26/2022, 12:38:31 AM) (c) http://w2ui.com, vitmalina@gmail.com */
+/* w2ui 2.0.x (nightly) (11/26/2022, 11:22:36 AM) (c) http://w2ui.com, vitmalina@gmail.com */
 /**
  * Part of w2ui 2.0 library
  *  - Dependencies: w2utils
@@ -22351,8 +22351,9 @@ class w2window extends w2base {
         if (options.title) query(this.box).find('.w2ui-window-title').append(w2utils.lang(options.title))
         if (options.buttons) query(this.box).find('.w2ui-window-buttons').append(options.buttons)
         if (options.body) query(this.box).find('.w2ui-window-body').append(options.body)
-        // allow element to render
+        // Bind events
         w2utils.bindEvents(query(this.box).find('.w2ui-eaction'), this)
+        // allow element to render
         query(this.box).find('.w2ui-window-body').show()
         this.status = 'open'
         self.setFocus(options.focus)
