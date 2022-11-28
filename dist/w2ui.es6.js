@@ -1,4 +1,4 @@
-/* w2ui 2.0.x (nightly) (11/26/2022, 11:22:36 AM) (c) http://w2ui.com, vitmalina@gmail.com */
+/* w2ui 2.0.x (nightly) (11/28/2022, 1:44:53 PM) (c) http://w2ui.com, vitmalina@gmail.com */
 /**
  * Part of w2ui 2.0 library
  *  - Dependencies: w2utils
@@ -2990,6 +2990,7 @@ class Utils {
             let actions = query(el).data()
             Object.keys(actions).forEach(name => {
                 let events = ['click', 'dblclick', 'mouseenter', 'mouseleave', 'mouseover', 'mouseout', 'mousedown', 'mousemove', 'mouseup',
+                    'pointerenter', 'pointerleave', 'pointerover', 'pointerout', 'pointerdown', 'pointermove', 'pointerup',
                     'contextmenu', 'focus', 'focusin', 'focusout', 'blur', 'input', 'change', 'keydown', 'keyup', 'keypress']
                 if (events.indexOf(String(name).toLowerCase()) == -1) {
                     return
