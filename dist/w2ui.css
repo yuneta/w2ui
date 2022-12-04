@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 /* w2ui 2.0.x (nightly) (11/28/2022, 1:44:53 PM) (c) http://w2ui.com, vitmalina@gmail.com */
+=======
+/* w2ui 2.0.x (nightly) (11/14/2022, 8:32:03 AM) (c) http://w2ui.com, vitmalina@gmail.com */
+>>>>>>> 7c74a7059bcf459099e5bfdc7c82c1d03fb228d3
 /**
 * TODO:
 *  - remove default styling, only keep w2ui-* styles
@@ -1411,7 +1415,7 @@ button.w2ui-btn:disabled {
   padding: 0px;
   overflow: hidden;
 }
-.w2ui-form > div {
+.w2ui-form > .w2ui-form-box {
   position: absolute;
   overflow: hidden;
   top: 0;
@@ -2050,7 +2054,7 @@ textarea.w2ui-error {
   border-radius: 2px;
   overflow: hidden !important;
 }
-.w2ui-grid > div.w2ui-grid-box {
+.w2ui-grid > .w2ui-grid-box {
   position: absolute;
   overflow: hidden;
   left: 0;
