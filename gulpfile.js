@@ -12,7 +12,8 @@ const del      = require('del')
 // const babel    = require('gulp-babel')
 // const { exec } = require('child_process')
 const comments = {
-    w2ui : '/* w2ui 2.0.x (nightly) ('+ (new Date()).toLocaleString('en-us') +') (c) http://w2ui.com, vitmalina@gmail.com */\n'
+    w2ui : '/* w2ui 2.0.x (nightly) ('+ (new Date()).toLocaleString('en-us') +') (c) http://w2ui.com, vitmalina@gmail.com */\n',
+    w2ui : '/* w2ui 2.0.x (nightly) (c) http://w2ui.com, vitmalina@gmail.com */\n',
 }
 
 const legacy_replace = `export {

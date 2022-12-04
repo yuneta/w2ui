@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-/* w2ui 2.0.x (nightly) (11/28/2022, 1:44:53 PM) (c) http://w2ui.com, vitmalina@gmail.com */
-=======
-/* w2ui 2.0.x (nightly) (11/14/2022, 8:32:03 AM) (c) http://w2ui.com, vitmalina@gmail.com */
->>>>>>> 7c74a7059bcf459099e5bfdc7c82c1d03fb228d3
+/* w2ui 2.0.x (nightly) (12/4/2022, 4:39:55 PM) (c) http://w2ui.com, vitmalina@gmail.com */
 /**
  * Part of w2ui 2.0 library
  *  - Dependencies: w2utils
@@ -978,6 +974,7 @@ query.version = Query.version
  *  - added stripSpaces
  *  - implemented marker
  *  - cssPrefix - deprecated
+ *  - w2utils.debounce
  */
 
 // variable that holds all w2ui objects
@@ -1928,10 +1925,12 @@ class Utils {
                 transition: (speed/1000) + 's',
                 opacity: 0,
             })
-            query(box).find('.w2ui-lock-msg').remove()
-            box._prevUnlock = setTimeout(() => {
+            let _box = query(box).get(0)
+            clearTimeout(_box._prevUnlock)
+            _box._prevUnlock = setTimeout(() => {
                 query(box).find('.w2ui-lock').remove()
             }, speed)
+            query(box).find('.w2ui-lock-msg').remove()
         } else {
             query(box).find('.w2ui-lock').remove()
             query(box).find('.w2ui-lock-msg').remove()
@@ -2426,6 +2425,9 @@ class Utils {
                 case 'height' :
                     ret = parseFloat(styles.height)
                     if (styles.height === 'auto') ret = 0
+                    break
+                default:
+                    ret = parseFloat(styles[type] ?? 0) || 0
                     break
             }
         }
@@ -3052,6 +3054,13 @@ class Utils {
                     })
             })
         })
+    }
+    debounce(func, wait = 250) {
+        let timeout
+        return (...args) => {
+            clearTimeout(timeout)
+            timeout = setTimeout(() => { func(...args) }, wait)
+        }
     }
 }
 var w2utils = new Utils() // eslint-disable-line -- needs to be functional/module scope variable
@@ -6025,6 +6034,11 @@ class DateTooltip extends Tooltip {
                 ${weekDays}
         `
         let DT = new Date(`${year}/${month}/1`) // first of month
+        /**
+         * Move to noon, instead of midnight. If not, then the date when time saving happens
+         * will be duplicated in the calendar
+         */
+        DT = new Date(DT.getTime() + dayLengthMil * 0.5)
         let weekday = DT.getDay()
         if (w2utils.settings.weekStarts == 'M') weekDay--
         if (weekday > 0) {
@@ -9897,6 +9911,8 @@ class w2layout extends w2base {
         if (edata.isCancelled === true) return
         if (this.padding < 0) this.padding = 0
         // layout itself
+        // width includes border and padding, we need to exclude that so panels
+        // are sized correctly
         let width  = w2utils.getSize(query(this.box), 'width')
         let height = w2utils.getSize(query(this.box), 'height')
         let self = this
@@ -14573,7 +14589,7 @@ class w2grid extends w2base {
                 </tr>`)
             // event before
             edata = this.trigger('expand', { target: this.name, recid: recid,
-                box_id: 'grid_'+ this.name +'_rec_'+ recid +'_expanded', fbox_id: 'grid_'+ this.name +'_frec_'+ id +'_expanded' })
+                box_id: 'grid_'+ this.name +'_rec_'+ recid +'_expanded', fbox_id: 'grid_'+ this.name +'_frec_'+ recid +'_expanded' })
             if (edata.isCancelled === true) {
                 query(this.box).find('#grid_'+ this.name +'_rec_'+ id +'_expanded_row').remove()
                 query(this.box).find('#grid_'+ this.name +'_frec_'+ id +'_expanded_row').remove()
@@ -14641,7 +14657,7 @@ class w2grid extends w2base {
             if (query(this.box).find('#grid_'+ this.name +'_rec_'+ id +'_expanded_row').length === 0 || this.show.expandColumn !== true) return false
             // event before
             edata = this.trigger('collapse', { target: this.name, recid: recid,
-                box_id: 'grid_'+ this.name +'_rec_'+ id +'_expanded', fbox_id: 'grid_'+ this.name +'_frec_'+ id +'_expanded' })
+                box_id: 'grid_'+ this.name +'_rec_'+ recid +'_expanded', fbox_id: 'grid_'+ this.name +'_frec_'+ recid +'_expanded' })
             if (edata.isCancelled === true) return false
             // default action
             query(this.box).find('#grid_'+ this.name +'_rec_'+ id).removeAttr('expanded').removeClass('w2ui-expanded')
@@ -15705,7 +15721,7 @@ class w2grid extends w2base {
                         if (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) {
                             target.focus()
                         } else {
-                            if ($input.get(0) !== document.active) $input.get(0).focus({ preventScroll: true })
+                            if ($input.get(0) !== document.active) $input.get(0)?.focus({ preventScroll: true })
                         }
                     }
                 }, 50)
@@ -16255,14 +16271,8 @@ class w2grid extends w2base {
                     await event.complete
                     let input = query(this.box).find(`#grid_${this.name}_search_all`)
                     w2utils.bindEvents(query(this.box).find(`#grid_${this.name}_search_all, .w2ui-action`), this)
-                    input.on('change', event => {
-                        if (!this.liveSearch) {
-                            this.search(this.last.field, event.target.value)
-                            this.searchSuggest(true, true, this)
-                        }
-                    })
-                        .on('blur', () => { this.last.liveText = '' })
-                        .on('keyup', event => {
+                    // slow down live search calls
+                    let slowSearch = w2utils.debounce((event) => {
                             let val = event.target.value
                             if (this.liveSearch && this.last.liveText != val) {
                                 this.last.liveText = val
@@ -16271,7 +16281,15 @@ class w2grid extends w2base {
                             if (event.keyCode == 40) { // arrow down
                                 this.searchSuggest(true)
                             }
-                        })
+                        }, 250)
+                    input.on('change', event => {
+                        if (!this.liveSearch) {
+                            this.search(this.last.field, event.target.value)
+                            this.searchSuggest(true, true, this)
+                        }
+                    })
+                        .on('blur', () => { this.last.liveText = '' })
+                        .on('keyup', slowSearch)
                 }
             })
         }
@@ -16292,6 +16310,11 @@ class w2grid extends w2base {
                 }
                 this.toolbar.items.push(w2utils.extend({}, this.buttons.save))
             }
+            // fill in overwritten items with default buttons
+            // ids are w2ui-* but in this.buttons the map is just [add, edit, delete]
+            // must specify at least {id, name} in this.toolbar.items if you want to keep order
+            tb_items = tb_items.map(item => this.buttons[item.name]
+                                            ? w2utils.extend({}, this.buttons[item.name], item) : item)
         }
         // add original buttons
         this.toolbar.items.push(...tb_items)
@@ -20115,12 +20138,14 @@ class w2form extends w2base {
                     }
                     field.$el
                         .prop('readOnly', true)
+                        .prop('disabled', true)
                         .prop('tabIndex', -1)
                         .closest('.w2ui-field')
                         .addClass('w2ui-disabled')
                 } else {
                     field.$el
                         .prop('readOnly', false)
+                        .prop('disabled', false)
                         .prop('tabIndex', field.$el.data('tabIndex') ?? field.$el.prop('tabIndex') ?? 0)
                         .closest('.w2ui-field')
                         .removeClass('w2ui-disabled')
@@ -20490,7 +20515,6 @@ class w2form extends w2base {
  *  - ENUM, LIST: should support wild chars
  *  - add selection of predefined times (used for appointments)
  *  - options.items - can be an array
- *  - options.msgSearch - message to search for user
  *  - options.msgNoItems - can be a function
  *  - REMOTE fields
  *
@@ -20707,7 +20731,8 @@ class w2field extends w2base {
                     prefix          : '',
                     suffix          : '',
                     openOnFocus     : false,  // if to show overlay onclick or when typing
-                    markSearch      : false
+                    markSearch      : false,
+                    msgSearch       : '',     // placeholder for search bar
                 }
                 if (typeof options.items == 'function') {
                     options._items_fun = options.items
@@ -20726,6 +20751,7 @@ class w2field extends w2base {
                         })
                     }
                 }
+                options.msgSearch = options.msgSearch || "Type to search..."
                 options = w2utils.extend({}, defaults, options)
                 this.options = options
                 if (!w2utils.isPlainObject(options.selected)) options.selected = {}
@@ -20735,6 +20761,7 @@ class w2field extends w2base {
                     .attr('autocomplete', 'off')
                     .attr('autocorrect', 'off')
                     .attr('spellcheck', 'false')
+                    .attr('placeholder', options.msgSearch)
                 if (options.selected.text != null) {
                     query(this.el).val(options.selected.text)
                 }
@@ -20948,7 +20975,7 @@ class w2field extends w2base {
                 }, 1)
             }
             // if readonly or disabled
-            if (query(this.el).prop('readonly') || query(this.el).prop('disabled')) {
+            if (query(this.el).prop('readOnly') || query(this.el).prop('disabled')) {
                 setTimeout(() => {
                     if (this.helpers.prefix) query(this.helpers.prefix).css('opacity', '0.6')
                     if (this.helpers.suffix) query(this.helpers.suffix).css('opacity', '0.6')
@@ -20986,13 +21013,13 @@ class w2field extends w2base {
                 div.attr('style', div.attr('style') + ';' + options.style)
             }
             query(this.el).css('z-index', '-1')
-            if (query(this.el).prop('readonly') || query(this.el).prop('disabled')) {
+            if (query(this.el).prop('readOnly') || query(this.el).prop('disabled')) {
                 setTimeout(() => {
                     div[0].scrollTop = 0 // scroll to the top
                     div.addClass('w2ui-readonly')
                         .find('.li-item').css('opacity', '0.9')
                         .parent().find('.li-search').hide()
-                        .find('input').prop('readonly', true)
+                        .find('input').prop('readOnly', true)
                         .closest('.w2ui-multi-items')
                         .find('.w2ui-list-remove').hide()
                 }, 1)
@@ -21001,7 +21028,7 @@ class w2field extends w2base {
                     div.removeClass('w2ui-readonly')
                         .find('.li-item').css('opacity', '1')
                         .parent().find('.li-search').show()
-                        .find('input').prop('readonly', false)
+                        .find('input').prop('readOnly', false)
                         .closest('.w2ui-multi-items')
                         .find('.w2ui-list-remove').show()
                 }, 1)
@@ -21046,7 +21073,7 @@ class w2field extends w2base {
                     let edata
                     // default behavior
                     if (query(event.target).hasClass('w2ui-list-remove')) {
-                        if (query(this.el).prop('readonly') || query(this.el).prop('disabled')) return
+                        if (query(this.el).prop('readOnly') || query(this.el).prop('disabled')) return
                         // trigger event
                         edata = this.trigger('remove', { target: this.el, originalEvent: event, item })
                         if (edata.isCancelled === true) return
@@ -21342,12 +21369,12 @@ class w2field extends w2base {
         }
         // color, date, time
         if (['color', 'date', 'time', 'datetime'].indexOf(this.type) !== -1) {
-            if (query(this.el).prop('readonly') || query(this.el).prop('disabled')) return
+            if (query(this.el).prop('readOnly') || query(this.el).prop('disabled')) return
             this.updateOverlay()
         }
         // menu
         if (['list', 'combo', 'enum'].indexOf(this.type) !== -1) {
-            if (query(this.el).prop('readonly') || query(this.el).prop('disabled')) {
+            if (query(this.el).prop('readOnly') || query(this.el).prop('disabled')) {
                 // still add focus
                 query(this.el).addClass('has-focus')
                 return
@@ -21455,7 +21482,7 @@ class w2field extends w2base {
         }
         // numeric
         if (['int', 'float', 'money', 'currency', 'percent'].includes(this.type)) {
-            if (!options.keyboard || query(this.el).prop('readonly') || query(this.el).prop('disabled')) return
+            if (!options.keyboard || query(this.el).prop('readOnly') || query(this.el).prop('disabled')) return
             val = parseFloat(query(this.el).val().replace(options.moneyRE, '')) || 0
             inc = options.step
             if (event.ctrlKey || event.metaKey) inc = options.step * 10
@@ -21480,7 +21507,7 @@ class w2field extends w2base {
         }
         // date/datetime
         if (['date', 'datetime'].includes(this.type)) {
-            if (!options.keyboard || query(this.el).prop('readonly') || query(this.el).prop('disabled')) return
+            if (!options.keyboard || query(this.el).prop('readOnly') || query(this.el).prop('disabled')) return
             let is = (this.type == 'date' ? w2utils.isDate : w2utils.isDateTime).bind(w2utils)
             let format = (this.type == 'date' ? w2utils.formatDate : w2utils.formatDateTime).bind(w2utils)
             daymil = 24*60*60*1000
@@ -21520,7 +21547,7 @@ class w2field extends w2base {
         }
         // time
         if (this.type === 'time') {
-            if (!options.keyboard || query(this.el).prop('readonly') || query(this.el).prop('disabled')) return
+            if (!options.keyboard || query(this.el).prop('readOnly') || query(this.el).prop('disabled')) return
             inc = (event.ctrlKey || event.metaKey ? 60 : 1)
             val = query(this.el).val()
             let time = w2date.str2min(val) || w2date.str2min((new Date()).getHours() + ':' + ((new Date()).getMinutes() - 1))
@@ -21639,7 +21666,7 @@ class w2field extends w2base {
         let params
         // color
         if (this.type === 'color') {
-            if (query(this.el).prop('readonly') || query(this.el).prop('disabled')) return
+            if (query(this.el).prop('readOnly') || query(this.el).prop('disabled')) return
             w2color.show(w2utils.extend({
                 name: this.el.id + '_color',
                 anchor: this.el,
@@ -21753,7 +21780,7 @@ class w2field extends w2base {
         }
         // date
         if (['date', 'time', 'datetime'].includes(this.type)) {
-            if (query(this.el).prop('readonly') || query(this.el).prop('disabled')) return
+            if (query(this.el).prop('readOnly') || query(this.el).prop('disabled')) return
             w2date.show(w2utils.extend({
                 name: this.el.id + '_date',
                 anchor: this.el,
@@ -22026,7 +22053,7 @@ class w2field extends w2base {
                     <div class="li-search">
                         <input ${searchId} type="text" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false"
                             tabindex="${tabIndex}"
-                            ${query(this.el).prop('readonly') ? 'readonly': '' }
+                            ${query(this.el).prop('readOnly') ? 'readonly': '' }
                             ${query(this.el).prop('disabled') ? 'disabled': '' }>
                     </div>
                 </div>
@@ -22039,15 +22066,14 @@ class w2field extends w2base {
                     <input name="attachment" class="file-input" type="file" tabindex="-1"'
                         style="width: 100%; height: 100%; opacity: 0" title=""
                         ${this.options.max !== 1 ? 'multiple' : ''}
-                        ${query(this.el).prop('readonly') ? 'readonly': ''}
-                        ${query(this.el).prop('disabled') ? 'disabled': ''}
+                        ${query(this.el).prop('readOnly') || query(this.el).prop('disabled') ? 'disabled': ''}
                         ${query(this.el).attr('accept') ? ' accept="'+ query(this.el).attr('accept') +'"': ''}>
                 </div>
                 <div class="w2ui-multi-items">
                     <div class="li-search" style="display: none">
                         <input ${searchId} type="text" autocapitalize="off" autocomplete="off" autocorrect="off" spellcheck="false"
                             tabindex="${tabIndex}"
-                            ${query(this.el).prop('readonly') ? 'readonly': '' }
+                            ${query(this.el).prop('readOnly') ? 'readonly': '' }
                             ${query(this.el).prop('disabled') ? 'disabled': '' }>
                     </div>
                 </div>
@@ -22080,19 +22106,19 @@ class w2field extends w2base {
                 .off('.drag')
                 .on('click.drag', (event) => {
                     event.stopPropagation()
-                    if (query(this.el).prop('readonly') || query(this.el).prop('disabled')) return
+                    if (query(this.el).prop('readOnly') || query(this.el).prop('disabled')) return
                     this.focus(event)
                 })
                 .on('dragenter.drag', (event) => {
-                    if (query(this.el).prop('readonly') || query(this.el).prop('disabled')) return
+                    if (query(this.el).prop('readOnly') || query(this.el).prop('disabled')) return
                     div.addClass('w2ui-file-dragover')
                 })
                 .on('dragleave.drag', (event) => {
-                    if (query(this.el).prop('readonly') || query(this.el).prop('disabled')) return
+                    if (query(this.el).prop('readOnly') || query(this.el).prop('disabled')) return
                     div.removeClass('w2ui-file-dragover')
                 })
                 .on('drop.drag', (event) => {
-                    if (query(this.el).prop('readonly') || query(this.el).prop('disabled')) return
+                    if (query(this.el).prop('readOnly') || query(this.el).prop('disabled')) return
                     div.removeClass('w2ui-file-dragover')
                     let files = Array.from(event.dataTransfer.files)
                     files.forEach(file => { this.addFile(file) })
@@ -22153,7 +22179,10 @@ class w2field extends w2base {
         if (edata.isCancelled === true) return
         // if errors and not silent
         if (options.silent !== true && errors.length > 0) {
-            w2tooltip.show(this.el, 'Errors: ' + errors.join('<br>'))
+            w2tooltip.show({
+                anchor: this.el,
+                html: 'Errors: ' + errors.join('<br>')
+            })
             console.log('ERRORS (while adding files): ', errors)
             return
         }
