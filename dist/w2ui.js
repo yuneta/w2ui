@@ -22570,6 +22570,7 @@ class w2window extends w2base {
         }
         query(window).off('resize', this.handleResize)
         w2utils.unlock(document.body, 0)
+        delete w2ui[this.name]
     }
     get_container() {
         return query(this.box).find('.w2ui-window-body')

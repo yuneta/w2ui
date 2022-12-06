@@ -5,7 +5,7 @@
  */
 
 import { w2base } from './w2base.js'
-import { w2utils } from './w2utils.js'
+import {w2ui, w2utils} from './w2utils.js'
 import { query } from './query.js'
 
 class w2window extends w2base {
@@ -393,6 +393,7 @@ class w2window extends w2base {
         }
         query(window).off('resize', this.handleResize)
         w2utils.unlock(document.body, 0)
+        delete w2ui[this.name]
     }
 
     get_container() {
