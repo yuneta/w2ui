@@ -17,3 +17,4 @@ dist/w2ui-*.tgz
 *~
 .hg/
 .hgignore
+.hgtags
