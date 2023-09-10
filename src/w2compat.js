@@ -23,6 +23,7 @@ import { w2layout } from './w2layout.js'
 import { w2sidebar } from './w2sidebar.js'
 import { w2tabs } from './w2tabs.js'
 import { w2toolbar } from './w2toolbar.js'
+import { w2window } from './w2window.js'
 import { w2tooltip, w2color, w2menu, w2date, Tooltip } from './w2tooltip.js'
 
 // Register jQuery plugins
