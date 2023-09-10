@@ -145,12 +145,18 @@ class w2layout extends w2base {
             return promise
         }
         let pname = '#layout_'+ this.name + '_panel_'+ p.type
-        let current = query(this.box).find(pname + '> .w2ui-panel-content')
+        let current = query(this.box).find(pname + '> [data-role="panel-content"]')
         let panelTop = 0
         if (current.length > 0) {
             query(this.box).find(pname).get(0).scrollTop = 0
             panelTop = query(current).css('top')
         }
+        // clean up previous content
+        if (typeof p.html.unmount == 'function') p.html.unmount()
+        current.addClass('w2ui-panel-content')
+        current.removeAttr('style') // styles could have added manually, but all necessary will be added by resizeBoxes
+        this.resizeBoxes(panel)
+
         if (p.html === '') {
             p.html = data
             this.refresh(panel)
@@ -160,9 +166,9 @@ class w2layout extends w2base {
                 if (transition != null && transition !== '') {
                     // apply transition
                     query(this.box).addClass('animating')
-                    let div1 = query(this.box).find(pname + '> .w2ui-panel-content')
-                    div1.after('<div class="w2ui-panel-content new-panel" style="'+ div1[0].style.cssText +'"></div>')
-                    let div2 = query(this.box).find(pname + '> .w2ui-panel-content.new-panel')
+                    let div1 = query(this.box).find(pname + '> [data-role="panel-content"]')
+                    div1.after('<div class="w2ui-panel-content new-panel" data-role="panel-content" style="'+ div1[0].style.cssText +'"></div>')
+                    let div2 = query(this.box).find(pname + '> [data-role="panel-content"].new-panel')
                     div1.css('top', panelTop)
                     div2.css('top', panelTop)
                     if (typeof data == 'object') {
@@ -176,7 +182,7 @@ class w2layout extends w2base {
                         div2.removeClass('new-panel')
                         div2.css('overflow', p.overflow)
                         // make sure only one content left
-                        query(query(this.box).find(pname + '> .w2ui-panel-content').get(1)).remove()
+                        query(query(this.box).find(pname + '> [data-role="panel-content"]').get(1)).remove()
                         query(this.box).removeClass('animating')
                         this.refresh(panel)
                     })
@@ -357,7 +363,7 @@ class w2layout extends w2base {
     }
 
     el(panel) {
-        let el = query(this.box).find('#layout_'+ this.name +'_panel_'+ panel +'> .w2ui-panel-content')
+        let el = query(this.box).find('#layout_'+ this.name +'_panel_'+ panel +'> [data-role="panel-content"]')
         if (el.length != 1) return null
         return el[0]
     }
@@ -366,7 +372,7 @@ class w2layout extends w2base {
         let pan = this.get(panel)
         if (!pan) return
         pan.show.toolbar = false
-        query(this.box).find('#layout_'+ this.name +'_panel_'+ panel +'> .w2ui-panel-toolbar').hide()
+        query(this.box).find(`#layout_${this.name}_panel_${panel} > [data-role="panel-toolbar"]`).hide()
         this.resize()
     }
 
@@ -374,7 +380,7 @@ class w2layout extends w2base {
         let pan = this.get(panel)
         if (!pan) return
         pan.show.toolbar = true
-        query(this.box).find('#layout_'+ this.name +'_panel_'+ panel +'> .w2ui-panel-toolbar').show()
+        query(this.box).find(`#layout_${this.name}_panel_${panel} > [data-role="panel-toolbar"]`).show()
         this.resize()
     }
 
@@ -388,9 +394,9 @@ class w2layout extends w2base {
         if (typeof toolbar == 'string' && w2ui[toolbar] != null) toolbar = w2ui[toolbar]
         let pan = this.get(panel)
         pan.toolbar = toolbar
-        let tmp = query(this.box).find(panel +'> .w2ui-panel-toolbar')
+        let tmp = query(this.box).find(panel +'> [data-role="panel-toolbar"]')
         if (pan.toolbar != null) {
-            if (tmp.find('[name='+ pan.toolbar.name +']').length === 0) {
+            if (tmp.attr('name') != pan.toolbar.name) {
                 pan.toolbar.render(tmp.get(0))
             } else if (pan.toolbar != null) {
                 pan.toolbar.refresh()
@@ -408,7 +414,7 @@ class w2layout extends w2base {
         let pan = this.get(panel)
         if (!pan) return
         pan.show.tabs = false
-        query(this.box).find('#layout_'+ this.name +'_panel_'+ panel +'> .w2ui-panel-tabs').hide()
+        query(this.box).find('#layout_'+ this.name +'_panel_'+ panel +'> [data-role="panel-tabs"]').hide()
         this.resize()
     }
 
@@ -416,7 +422,7 @@ class w2layout extends w2base {
         let pan = this.get(panel)
         if (!pan) return
         pan.show.tabs = true
-        query(this.box).find('#layout_'+ this.name +'_panel_'+ panel +'> .w2ui-panel-tabs').show()
+        query(this.box).find('#layout_'+ this.name +'_panel_'+ panel +'> [data-role="panel-tabs"]').show()
         this.resize()
     }
 
@@ -436,13 +442,7 @@ class w2layout extends w2base {
         if (edata.isCancelled === true) return
         // default action
         if (box != null) {
-            // clean previous box
-            if (query(this.box).find('#layout_'+ this.name +'_panel_main').length > 0) {
-                query(this.box)
-                    .removeAttr('name')
-                    .removeClass('w2ui-layout')
-                    .html('')
-            }
+            this.unmount() // clean previous control
             this.box = box
         }
         if (!this.box) return false
@@ -458,9 +458,9 @@ class w2layout extends w2base {
         for (let p1 = 0; p1 < w2panels.length; p1++) {
             let html = '<div id="layout_'+ this.name + '_panel_'+ w2panels[p1] +'" class="w2ui-panel">'+
                         '    <div class="w2ui-panel-title"></div>'+
-                        '    <div class="w2ui-panel-tabs"></div>'+
-                        '    <div class="w2ui-panel-toolbar"></div>'+
-                        '    <div class="w2ui-panel-content"></div>'+
+                        '    <div class="w2ui-panel-tabs" data-role="panel-tabs"></div>'+
+                        '    <div class="w2ui-panel-toolbar" data-role="panel-toolbar"></div>'+
+                        '    <div class="w2ui-panel-content" data-role="panel-content"></div>'+
                         '</div>'+
                         '<div id="layout_'+ this.name + '_resizer_'+ w2panels[p1] +'" class="w2ui-resizer"></div>'
             query(this.box).find(':scope > div').append(html)
@@ -670,6 +670,37 @@ class w2layout extends w2base {
         }
     }
 
+    unmount() {
+        super.unmount()
+        this.panels.forEach(panel => {
+            panel.tabs?.unmount?.()
+            panel.toolbar?.unmount?.()
+        })
+        this.last.observeResize?.disconnect()
+    }
+
+    destroy() {
+        // event before
+        let edata = this.trigger('destroy', { target: this.name })
+        if (edata.isCancelled === true) return
+        if (w2ui[this.name] == null) return false
+        // clean up
+        this.panels.forEach(panel => {
+            panel.tabs?.destroy?.()
+            panel.toolbar?.destroy?.()
+        })
+        if (query(this.box).find('#layout_'+ this.name +'_panel_main').length > 0) {
+            this.unmount()
+        }
+        delete w2ui[this.name]
+        // event after
+        edata.finish()
+        if (this.last.events && this.last.events.resize) {
+            query(window).off('resize', this.last.events.resize)
+        }
+        return true
+    }
+
     refresh(panel) {
         let self = this
         // if (window.getSelection) window.getSelection().removeAllRanges(); // clear selection
@@ -693,11 +724,11 @@ class w2layout extends w2base {
             }
             // insert content
             if (typeof p.html == 'object' && typeof p.html.render === 'function') {
-                p.html.box = query(self.box).find(pname +'> .w2ui-panel-content')[0]
+                p.html.box = query(self.box).find(pname +'> [data-role="panel-content"]')[0]
                 setTimeout(() => {
                     // need to remove unnecessary classes
-                    if (query(self.box).find(pname +'> .w2ui-panel-content').length > 0) {
-                        query(self.box).find(pname +'> .w2ui-panel-content')
+                    if (query(self.box).find(pname +'> [data-role="panel-content"]').length > 0) {
+                        query(self.box).find(pname +'> [data-role="panel-content"]')
                             .removeClass()
                             .removeAttr('name')
                             .addClass('w2ui-panel-content')
@@ -709,8 +740,8 @@ class w2layout extends w2base {
                 }, 1)
             } else {
                 // need to remove unnecessary classes
-                if (query(self.box).find(pname +'> .w2ui-panel-content').length > 0) {
-                    query(self.box).find(pname +'> .w2ui-panel-content')
+                if (query(self.box).find(pname +'> [data-role="panel-content"]').length > 0) {
+                    query(self.box).find(pname +'> [data-role="panel-content"]')
                         .removeClass()
                         .removeAttr('name')
                         .addClass('w2ui-panel-content')
@@ -719,25 +750,27 @@ class w2layout extends w2base {
                 }
             }
             // if there are tabs and/or toolbar - render it
-            let tmp = query(self.box).find(pname +'> .w2ui-panel-tabs')
+            let tmp = query(self.box).find(pname +'> [data-role="panel-tabs"]')
             if (p.show.tabs) {
-                if (tmp.find('[name='+ p.tabs.name +']').length === 0 && p.tabs != null) {
+                if (tmp.attr('name') != p.tabs.name && p.tabs != null) {
                     p.tabs.render(tmp.get(0))
                 } else {
                     p.tabs.refresh()
                 }
+                tmp.addClass('w2ui-panel-tabs')
             } else {
-                tmp.html('').removeClass('w2ui-tabs').hide()
+                tmp.html('').removeAttr('name').removeClass('w2ui-tabs').hide()
             }
-            tmp = query(self.box).find(pname +'> .w2ui-panel-toolbar')
+            tmp = query(self.box).find(pname +'> [data-role="panel-toolbar"]')
             if (p.show.toolbar) {
-                if (tmp.find('[name='+ p.toolbar.name +']').length === 0 && p.toolbar != null) {
+                if (tmp.attr('name') != p.toolbar.name && p.toolbar != null) {
                     p.toolbar.render(tmp.get(0))
                 } else {
                     p.toolbar.refresh()
                 }
+                tmp.addClass('w2ui-panel-toolbar')
             } else {
-                tmp.html('').removeClass('w2ui-toolbar').hide()
+                tmp.html('').removeAttr('name').removeClass('w2ui-toolbar').hide()
             }
             // show title
             tmp = query(self.box).find(pname +'> .w2ui-panel-title')
@@ -854,6 +887,7 @@ class w2layout extends w2base {
                     })
                     .off('mousedown')
                     .on('mousedown', function(event) {
+                        event.preventDefault()
                         // event before
                         let edata = self.trigger('resizerClick', { target: 'top', originalEvent: event })
                         if (edata.isCancelled === true) return
@@ -900,6 +934,7 @@ class w2layout extends w2base {
                     })
                     .off('mousedown')
                     .on('mousedown', function(event) {
+                        event.preventDefault()
                         // event before
                         let edata = self.trigger('resizerClick', { target: 'left', originalEvent: event })
                         if (edata.isCancelled === true) return
@@ -946,6 +981,7 @@ class w2layout extends w2base {
                     })
                     .off('mousedown')
                     .on('mousedown', function(event) {
+                        event.preventDefault()
                         // event before
                         let edata = self.trigger('resizerClick', { target: 'right', originalEvent: event })
                         if (edata.isCancelled === true) return
@@ -991,6 +1027,7 @@ class w2layout extends w2base {
                     })
                     .off('mousedown')
                     .on('mousedown', function(event) {
+                        event.preventDefault()
                         // event before
                         let edata = self.trigger('resizerClick', { target: 'bottom', originalEvent: event })
                         if (edata.isCancelled === true) return
@@ -1057,6 +1094,7 @@ class w2layout extends w2base {
                     })
                     .off('mousedown')
                     .on('mousedown', function(event) {
+                        event.preventDefault()
                         // event before
                         let edata = self.trigger('resizerClick', { target: 'preview', originalEvent: event })
                         if (edata.isCancelled === true) return
@@ -1072,51 +1110,41 @@ class w2layout extends w2base {
             query(this.box).find('#layout_'+ this.name +'_resizer_preview').hide()
         }
 
-        // display tabs and toolbar if needed
-        for (let p1 = 0; p1 < w2panels.length; p1++) {
-            let pan = this.get(w2panels[p1])
-            let tmp2 = '#layout_'+ this.name +'_panel_'+ w2panels[p1] +' > .w2ui-panel-'
-            let tabHeight = 0
-            if (pan) {
-                if (pan.title) {
-                    let el = query(this.box).find(tmp2 + 'title').css({ top: tabHeight + 'px', display: 'block' })
-                    tabHeight += w2utils.getSize(el, 'height')
-                }
-                if (pan.show.tabs) {
-                    let el = query(this.box).find(tmp2 + 'tabs').css({ top: tabHeight + 'px', display: 'block' })
-                    tabHeight += w2utils.getSize(el, 'height')
-                }
-                if (pan.show.toolbar) {
-                    let el = query(this.box).find(tmp2 + 'toolbar').css({ top: tabHeight + 'px', display: 'block' })
-                    tabHeight += w2utils.getSize(el, 'height')
-                }
-            }
-            query(this.box).find(tmp2 + 'content').css({ display: 'block' }).css({ top: tabHeight + 'px' })
-        }
+        // resizes boxes for header, tabs, toolbar inside the panel
+        this.resizeBoxes()
+
         edata.finish()
         return Date.now() - time
     }
 
-    destroy() {
-        // event before
-        let edata = this.trigger('destroy', { target: this.name })
-        if (edata.isCancelled === true) return
-        if (w2ui[this.name] == null) return false
-        // clean up
-        if (query(this.box).find('#layout_'+ this.name +'_panel_main').length > 0) {
-            query(this.box)
-                .removeAttr('name')
-                .removeClass('w2ui-layout')
-                .html('')
-        }
-        this.last.observeResize?.disconnect()
-        delete w2ui[this.name]
-        // event after
-        edata.finish()
-        if (this.last.events && this.last.events.resize) {
-            query(window).off('resize', this.last.events.resize)
-        }
-        return true
+    resizeBoxes(panel) {
+        let panels = w2panels
+        if (!panel && typeof panel == 'string') panels = [panel]
+        // display tabs and toolbar if needed
+        panels.forEach((pname, ind) => {
+            let pan = this.get(w2panels[ind])
+            let tmp2 = `#layout_${this.name}_panel_${pname} > `
+            let topHeight = 0
+            if (pan) {
+                if (pan.title) {
+                    let el = query(this.box).find(tmp2 + '.w2ui-panel-title').css({ top: topHeight + 'px', display: 'block' })
+                    topHeight += w2utils.getSize(el, 'height')
+                }
+                if (pan.show.tabs) {
+                    let el = query(this.box).find(tmp2 + '[data-role="panel-tabs"]').css({ top: topHeight + 'px', display: 'block' })
+                    topHeight += w2utils.getSize(el, 'height')
+                }
+                if (pan.show.toolbar) {
+                    let el = query(this.box).find(tmp2 + '[data-role="panel-toolbar"]').css({ top: topHeight + 'px', display: 'block' })
+                    topHeight += w2utils.getSize(el, 'height')
+                }
+            }
+            query(this.box).find(tmp2 + '[data-role="panel-content"]')
+                .css({
+                    display: 'block',
+                    top: topHeight + 'px'
+                })
+        })
     }
 
     lock(panel, msg, showSpinner) {

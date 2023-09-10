@@ -123,10 +123,42 @@
                 }
             }
 
+            // hide badges when editing nodes
+            &.w2ui-editing .w2ui-node-badge {
+                display: none;
+            }
+
+            &.w2ui-reorder-empty {
+                border: 1px dashed silver;
+                background-color: #fbfcfe;
+            }
+            &.w2ui-ghost {
+                position: absolute;
+                z-index: 999999;
+                pointer-events: none;
+                width: calc(100% - 4px);
+                opacity: 0.8;
+                background-color: #f3f3f3;
+                border-top: 1px dotted silver;
+                border-bottom: 1px dotted silver;
+                > * {
+                    pointer-events: none;
+                }
+            }
+
             // enable pointer events for all inputs inside node
             input, button {
                 pointer-events: auto;
             }
+        }
+
+        .w2ui-ghost-line {
+            position: absolute;
+            z-index: 999999;
+            pointer-events: none;
+            width: calc(100% - 4px);
+            background-color: #82a6ff;
+            height: 2px;
         }
 
         .w2ui-selected,
@@ -162,6 +194,9 @@
             position: relative;
             z-index: 1;
             font-size: 12px;
+            &.no-icon {
+                margin-left: 0px;
+            }
         }
 
         .w2ui-node-group {
@@ -189,6 +224,12 @@
 
         .w2ui-node-sub {
             overflow: hidden;
+            .w2ui-reorder-empty-sub {
+                border: 1px dashed silver;
+                background-color: #fbfcfe;
+                height: calc(100% - 4px);
+                margin: 2px 4px;
+            }
         }
 
         .w2ui-node-data {
@@ -208,28 +249,43 @@
                 }
             }
 
-            .w2ui-node-count {
+            .w2ui-node-badge {
+                display: flex;
+                flex-direction: row;
                 float: right;
-                border: 1px solid #F6FCF4;
-                border-radius: 20px;
                 width: auto;
-                padding: 2px 7px;
+                padding: 2px;
                 margin: 3px 4px -2px 0;
-                background-color: #F2F8F0;
                 color: #666;
-                box-shadow: 0px 0px 2px #474545;
                 text-shadow: 1px 1px 0px #FFF;
                 position: relative;
                 z-index: 2;
+                &.w2ui-node-count {
+                    padding: 2px 7px;
+                    border: 1px solid #F6FCF4;
+                    border-radius: 20px;
+                    box-shadow: 0px 0px 2px #474545;
+                    background-color: #F2F8F0;
+                    margin-right: 0px !important;
+                }
             }
 
             .w2ui-collapsed,
             .w2ui-expanded {
                 float: right;
-                width: auto;
-                height: 18px;
+                width: 15px;
+                height: 25px;
                 position: relative;
                 z-index: 2;
+                padding-left: 5px;
+                border-radius: 4px;
+                &:hover {
+                    background-color: #e1e1e1
+                }
+                &.w2ui-left-toggle {
+                    float: left;
+                    margin-left: -14px;
+                }
                 span {
                     border-color: transparent;
                     background-color: transparent;

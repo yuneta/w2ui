@@ -2,11 +2,14 @@
  * Part of w2ui 2.0 library
  * - Dependencies: mQuery, w2utils, w2base
  *
+ * TODO:
+ * - need help pages
+ *
  * 2.0 Changes
  * - multiple tooltips to the same anchor
- *
- * TODO
- * - load menu items from URL
+ * - options.contextMenu
+ * - options.prefilter - if true, it will show prefiltered items for w2menu, otherwise all
+ * - menu.item.help, menu.item.hotkey
  */
 
 import { w2base } from './w2base.js'
@@ -25,13 +28,13 @@ class Tooltip {
             position        : 'top|bottom',   // can be left, right, top, bottom
             align           : '',       // can be: both, both:XX left, right, both, top, bottom
             anchor          : null,     // element it is attached to, if anchor is body, then it is context menu
+            contextMenu     : false,    // if true, then it is context menu
             anchorClass     : '',       // add class for anchor when tooltip is shown
             anchorStyle     : '',       // add style for anchor when tooltip is shown
             autoShow        : false,    // if autoShow true, then tooltip will show on mouseEnter and hide on mouseLeave
             autoShowOn      : null,     // when options.autoShow = true, mouse event to show on
             autoHideOn      : null,     // when options.autoShow = true, mouse event to hide on
             arrowSize       : 8,        // size of the carret
-            margin          : 0,        // extra margin from the anchor
             screenMargin    : 2,        // min margin from screen to tooltip
             autoResize      : true,     // auto resize based on content size and available size
             margin          : 1,        // distance from the anchor
@@ -96,7 +99,7 @@ class Tooltip {
         let self = this
         if (arguments.length == 0) {
             return
-        } else if (arguments.length == 1 && anchor.anchor) {
+        } else if (arguments.length == 1 && anchor instanceof Object) {
             options = anchor
             anchor = options.anchor
         } else if (arguments.length === 2 && typeof text === 'string') {
@@ -113,8 +116,8 @@ class Tooltip {
         delete options.anchor
 
         // define tooltip
-        let name = (options.name ? options.name : anchor.id)
-        if (anchor == document || anchor == document.body) {
+        let name = (options.name ? options.name : anchor?.id)
+        if (anchor == document || anchor == document.body || options.contextMenu) {
             anchor = document.body
             name = 'context-menu'
         }
@@ -129,16 +132,24 @@ class Tooltip {
             overlay.prevOptions = overlay.options
             overlay.options = options // do not merge or extend, otherwiser menu items get merged too
             // overlay.options = w2utils.extend({}, overlay.options, options)
-            overlay.anchor  = anchor // as HTML elements are not copied
+            overlay.anchor = anchor // as HTML elements are not copied
             if (overlay.prevOptions.html != overlay.options.html || overlay.prevOptions.class != overlay.options.class
                     || overlay.prevOptions.style != overlay.options.style) {
                 overlay.needsUpdate = true
             }
             options = overlay.options // it was recreated
+            // clear all previous overlay events
+            Object.keys(overlay).forEach(key => {
+                let val = overlay[key]
+                if (key.startsWith('on') && typeof val == 'function') {
+                    delete overlay[key]
+                }
+            })
         } else {
             overlay = new w2base()
             Object.assign(overlay, {
-                id: 'w2overlay-' + name, name, options, anchor,
+                id: 'w2overlay-' + name,
+                name, options, anchor, self,
                 displayed: false,
                 tmp: {
                     observeResize: new ResizeObserver(() => {
@@ -164,6 +175,7 @@ class Tooltip {
             options.autoShowOn = options.autoShowOn ?? 'mouseenter'
             options.autoHideOn = options.autoHideOn ?? 'mouseleave'
             options.autoShow = false
+            options._keep = true
         }
         if (options.autoShowOn) {
             let scope = 'autoShow-' + overlay.name
@@ -174,6 +186,7 @@ class Tooltip {
                     event.stopPropagation()
                 })
             delete options.autoShowOn
+            options._keep = true
         }
         if (options.autoHideOn) {
             let scope = 'autoHide-' + overlay.name
@@ -184,6 +197,7 @@ class Tooltip {
                     event.stopPropagation()
                 })
             delete options.autoHideOn
+            options._keep = true
         }
         overlay.off('.attach')
         let ret = {
@@ -231,11 +245,25 @@ class Tooltip {
                 options.anchor = name
             }
             let ret = this.attach(options)
+            ret.overlay.tmp.hidden = false
+
             query(ret.overlay.anchor)
                 .off('.autoShow-' + ret.overlay.name)
                 .off('.autoHide-' + ret.overlay.name)
-            // need a timer, so that events would be preperty set
-            setTimeout(() => { this.show(ret.overlay.name) }, 1)
+
+            /**
+             * Need a timer, so that events in the 'return ret` would be preperty set as it is using chaning mechanism
+             * to set listeners: w2tooltip.show({}).then(...).show(...). Since it could be hidden before timer kick in
+             * to show it, need the check in the timeout.
+             */
+            setTimeout(() => {
+                if (!ret.overlay.tmp.hidden) {
+                    this.show(ret.overlay.name)
+                    if (this.initControls) {
+                        this.initControls(ret.overlay)
+                    }
+                }
+            }, 1)
             return ret
         }
         let edata
@@ -254,7 +282,7 @@ class Tooltip {
         if (options.maxWidth && w2utils.getStrWidth(options.html, '') > options.maxWidth) {
             overlayStyles = 'width: '+ options.maxWidth + 'px; white-space: inherit; overflow: auto;'
         }
-        overlayStyles += ' max-height: '+ (options.maxHeight ? options.maxHeight : window.innerHeight - 40) + 'px;'
+        overlayStyles += ' max-height: '+ (options.maxHeight ? options.maxHeight : window.innerHeight - 4) + 'px;'
         // if empty content - then hide it
         if (options.html === '' || options.html == null) {
             self.hide(name)
@@ -412,14 +440,16 @@ class Tooltip {
             name = name.replace(/[\s\.#]/g, '_')
             overlay = Tooltip.active[name]
         }
+        if (overlay?.tmp) overlay.tmp.hidden = true // it could be hidden before it is actually shown
         if (!overlay || !overlay.box) return
 
-        delete Tooltip.active[name]
         // event before
         let edata = this.trigger('hide', { target: name, overlay })
         if (edata.isCancelled === true) return
-        let scope = 'tooltip-' + overlay.name
+
         // normal processing
+        if (!overlay.options._keep) delete Tooltip.active[name]
+        let scope = 'tooltip-' + overlay.name
         overlay.tmp.observeResize?.disconnect()
         if (overlay.options.watchScroll) {
             query(overlay.options.watchScroll)
@@ -451,8 +481,10 @@ class Tooltip {
         } else {
             query(overlay.anchor).data('tooltipName', names)
         }
-        // restore original CSS
-        overlay.anchor.style.cssText = overlay.tmp.originalCSS
+        // restore original CSS, only if anchor styles where extended
+        if (overlay.options.anchorStyle) {
+            overlay.anchor.style.cssText = overlay.tmp.originalCSS
+        }
         query(overlay.anchor)
             .off(`.${scope}`)
             .removeClass(overlay.options.anchorClass)
@@ -521,14 +553,18 @@ class Tooltip {
             width: window.innerWidth - (hasScrollBarY ? scrollSize : 0),
             height: window.innerHeight - (hasScrollBarX ? scrollSize : 0)
         }
-        let position   = options.position == 'auto' ? 'top|bottom|right|left'.split('|') : options.position.split('|')
+        let position = options.position == 'auto'
+            ? 'top|bottom|right|left'.split('|')
+            : Array.isArray(options.position) ? options.position : options.position.split('|')
         let isVertical = ['top', 'bottom'].includes(position[0])
-        let content    = overlay.box.getBoundingClientRect()
-        let anchor     = overlay.anchor.getBoundingClientRect()
+        let content = overlay.box.getBoundingClientRect()
+        let anchor = overlay.anchor.getBoundingClientRect()
 
         if (overlay.anchor == document.body) {
             // context menu
-            let { x, y, width, height } = options.originalEvent
+            let evt = options.originalEvent
+            while(evt.originalEvent) { evt = evt.originalEvent }
+            let { x, y, width, height } = evt
             anchor = { left: x - 2, top: y - 4, width, height, arrow: 'none' }
         }
         let arrowSize = options.arrowSize
@@ -536,8 +572,8 @@ class Tooltip {
 
         // space available
         let available = { // tipsize adjustment should be here, not in max.width/max.height
-            top: anchor.top,
-            bottom: max.height - (anchor.top + anchor.height) - + (hasScrollBarX ? scrollSize : 0),
+            top: anchor.top - arrowSize,
+            bottom: max.height - arrowSize - (anchor.top + anchor.height) - (hasScrollBarX ? scrollSize : 0) - 2,
             left: anchor.left,
             right: max.width - (anchor.left + anchor.width) + (hasScrollBarY ? scrollSize : 0),
         }
@@ -601,14 +637,19 @@ class Tooltip {
         }
         usePosition(found)
         if (isVertical) anchorAlignment()
+
+        // user offset
+        top += parseFloat(options.offsetY)
+        left += parseFloat(options.offsetX)
+
+        // make sure it is inside visible screen area
         screenAdjust()
 
+        // adjust for scrollbar
         let extraTop = (found == 'top' ? -options.margin : (found == 'bottom' ? options.margin : 0))
         let extraLeft = (found == 'left' ? -options.margin : (found == 'right' ? options.margin : 0))
-
-        // adjust for scrollbar
-        top = Math.floor((top + parseFloat(options.offsetY) + parseFloat(extraTop)) * 100) / 100
-        left = Math.floor((left + parseFloat(options.offsetX) + parseFloat(extraLeft)) * 100) / 100
+        top = Math.floor((top + parseFloat(extraTop)) * 100) / 100
+        left = Math.floor((left + parseFloat(extraLeft)) * 100) / 100
 
         return { left, top, arrow, adjust, width, height, pos: found }
 
@@ -753,7 +794,7 @@ class ColorTooltip extends Tooltip {
             position    : 'top|bottom',
             class       : 'w2ui-white',
             color       : '',
-            liveUpdate  : true,
+            updateInput : true,
             arrowSize   : 12,
             autoResize  : false,
             anchorClass : 'w2ui-focus',
@@ -766,7 +807,7 @@ class ColorTooltip extends Tooltip {
 
     attach(anchor, text) {
         let options
-        if (arguments.length == 1 && anchor.anchor) {
+        if (arguments.length == 1 && anchor instanceof Object) {
             options = anchor
             anchor = options.anchor
         } else if (arguments.length === 2 && text != null && typeof text === 'object') {
@@ -782,7 +823,7 @@ class ColorTooltip extends Tooltip {
         // add remove transparent color
         if (options.transparent && this.palette[0][1] == '333333') {
             this.palette[0].splice(1, 1)
-            this.palette[0].push('')
+            this.palette[0].push('TRANSPARENT')
         }
         if (!options.transparent && this.palette[0][1] != '333333') {
             this.palette[0].splice(1, 0, '333333')
@@ -822,13 +863,16 @@ class ColorTooltip extends Tooltip {
             let overlay = event.detail.overlay
             let anchor  = overlay.anchor
             let color   = overlay.newColor ?? overlay.options.color ?? ''
-            if (['INPUT', 'TEXTAREA'].includes(anchor.tagName) && anchor.value != color) {
-                anchor.value = color
+            // color has been selected
+            if (color !== '') {
+                if (['INPUT', 'TEXTAREA'].includes(anchor.tagName) && anchor.value != color && overlay.options.updateInput) {
+                    anchor.value = color
+                }
+                let edata = this.trigger('select', { color, target: overlay.name, overlay })
+                if (edata.isCancelled === true) return
+                // event after
+                edata.finish()
             }
-            let edata = this.trigger('select', { color, target: overlay.name, overlay })
-            if (edata.isCancelled === true) return
-            // event after
-            edata.finish()
         })
         ret.liveUpdate = (callback) => {
             overlay.on('liveUpdate.attach', (event) => { callback(event) })
@@ -855,11 +899,11 @@ class ColorTooltip extends Tooltip {
         let edata = this.trigger('liveUpdate', { color, target: name, overlay, param: arguments[1] })
         if (edata.isCancelled === true) return
         // if anchor is input - live update
-        if (['INPUT', 'TEXTAREA'].includes(overlay.anchor.tagName) && overlay.options.liveUpdate) {
+        if (['INPUT', 'TEXTAREA'].includes(overlay.anchor.tagName) && overlay.options.updateInput) {
             query(overlay.anchor).val(color)
         }
         overlay.newColor = color
-        query(overlay.box).find('.w2ui-selected').removeClass('w2ui-selected')
+        query(overlay.box).find('.w2ui-color.w2ui-selected').removeClass('w2ui-selected')
         if (target) {
             query(target).addClass('w2ui-selected')
         }
@@ -919,7 +963,7 @@ class ColorTooltip extends Tooltip {
                 let border = ''
                 if (color === 'FFFFFF') border = '; border: 1px solid #efefef'
                 html += `
-                    <div class="w2ui-color w2ui-eaction ${color === '' ? 'w2ui-no-color' : ''} ${options.color == color ? 'w2ui-selected' : ''}"
+                    <div class="w2ui-color w2ui-eaction ${color === 'TRANSPARENT' ? 'w2ui-no-color' : ''} ${options.color == color ? 'w2ui-selected' : ''}"
                         style="background-color: #${color + border};" name="${color}" index="${i}:${j}"
                         data-mousedown="select|'${color}'|event" data-mouseup="hide|${name}">&nbsp;
                     </div>`
@@ -965,7 +1009,7 @@ class ColorTooltip extends Tooltip {
         // color tabs on the bottom
         html += `
             <div class="w2ui-color-tabs">
-                <div class="w2ui-color-tab selected w2ui-eaction" data-click="tabClick|1|event|this"><span class="w2ui-icon w2ui-icon-colors"></span></div>
+                <div class="w2ui-color-tab w2ui-selected w2ui-eaction" data-click="tabClick|1|event|this"><span class="w2ui-icon w2ui-icon-colors"></span></div>
                 <div class="w2ui-color-tab w2ui-eaction" data-click="tabClick|2|event|this"><span class="w2ui-icon w2ui-icon-settings"></span></div>
                 <div style="padding: 5px; width: 100%; text-align: right;">
                     ${(typeof options.html == 'string' ? options.html : '')}
@@ -979,7 +1023,8 @@ class ColorTooltip extends Tooltip {
         let initial // used for mouse events
         let self = this
         let options = overlay.options
-        let rgb = w2utils.parseColor(options.color || overlay.tmp.initColor)
+        let color = options.color || overlay.tmp.initColor
+        let rgb = w2utils.parseColor(color)
         if (rgb == null) {
             rgb = { r: 140, g: 150, b: 160, a: 1 }
         }
@@ -987,10 +1032,15 @@ class ColorTooltip extends Tooltip {
         if (options.advanced === true) {
             this.tabClick(2, overlay.name)
         }
-        setColor(hsv, true, true)
+        setColor(hsv, true, color ?? '') // should not be null or undefined
 
         // even for rgb, hsv inputs
-        query(overlay.box).find('input')
+        query(overlay.box)
+            .off('.w2color')
+            .on('contextmenu.w2color', event => {
+                event.preventDefault() // prevent browser context menu
+            })
+            .find('input')
             .off('.w2color')
             .on('change.w2color', (event) => {
                 let el = query(event.target)
@@ -1068,13 +1118,13 @@ class ColorTooltip extends Tooltip {
                 }
             })
             // if it is in pallette
-            if (initial) {
-                let color = overlay.tmp?.initColor || newColor
+            if (initial != null) {
+                let color = overlay.tmp.initColor || newColor
                 query(overlay.box).find('.color-original')
-                    .css('background-color', '#'+color)
-                query(overlay.box).find('.w2ui-colors .w2ui-selected')
+                    .css('background-color', '#' + color)
+                query(overlay.box).find('.w2ui-color.w2ui-selected')
                     .removeClass('w2ui-selected')
-                query(overlay.box).find(`.w2ui-colors [name="${color}"]`)
+                query(overlay.box).find(`.w2ui-colors [name="${color}"], .w2ui-colors [name="${initial}"]`) // color conversion might be slightly off
                     .addClass('w2ui-selected')
                 // if has transparent color, open advanced tab
                 if (newColor.length == 8) {
@@ -1093,6 +1143,7 @@ class ColorTooltip extends Tooltip {
             let el1 = query(overlay.box).find('.palette .value1')
             let el2 = query(overlay.box).find('.rainbow .value2')
             let el3 = query(overlay.box).find('.alpha .value2')
+            if (!el1[0] || !el2[0] || !el3[0]) return
             let offset1 = parseInt(el1[0].clientWidth) / 2
             let offset2 = parseInt(el2[0].clientWidth) / 2
             el1.css({
@@ -1183,7 +1234,9 @@ class MenuTooltip extends Tooltip {
         //   count    : '',
         //   tooltip  : '',
         //   hotkey   : '',
-        //   remove   : false,
+        //   removable: false,
+        //   help     : '',      // text for help tooltip
+        //   hotkey   ; '',      // hotkey text for the items
         //   items    : []
         //   indent   : 0,
         //   type     : null,    // check/radio
@@ -1205,6 +1258,7 @@ class MenuTooltip extends Tooltip {
             menuStyle   : '',
             filter      : false,
             markSearch  : false,
+            prefilter   : false,
             match       : 'contains',   // is, begins, ends, contains
             search      : false,        // top search TODO: Check
             altRows     : false,
@@ -1223,7 +1277,7 @@ class MenuTooltip extends Tooltip {
 
     attach(anchor, text) {
         let options
-        if (arguments.length == 1 && anchor.anchor) {
+        if (arguments.length == 1 && anchor instanceof Object) {
             options = anchor
             anchor = options.anchor
         } else if (arguments.length === 2 && text != null && typeof text === 'object') {
@@ -1239,6 +1293,7 @@ class MenuTooltip extends Tooltip {
         if (options.items == null) {
             options.items = []
         }
+        options.items = w2utils.normMenu(options.items)
         options.html = this.getMenuHTML(options)
         let ret = super.attach(options)
         let overlay = ret.overlay
@@ -1247,7 +1302,6 @@ class MenuTooltip extends Tooltip {
                 let search = ''
                 // reset selected and active chain
                 overlay.selected = null
-                overlay.options.items = w2utils.normMenu(overlay.options.items)
 
                 if (['INPUT', 'TEXTAREA'].includes(overlay.anchor.tagName)) {
                     search = overlay.anchor.value
@@ -1255,15 +1309,59 @@ class MenuTooltip extends Tooltip {
                 }
                 let actions = query(ret.overlay.box).find('.w2ui-eaction')
                 w2utils.bindEvents(actions, this)
-                let count = this.applyFilter(overlay.name, null, search)
-                overlay.tmp.searchCount = count
-                overlay.tmp.search = search
-
-                this.refreshSearch(overlay.name)
-                this.initControls(ret.overlay)
-                this.refreshIndex(overlay.name)
+                this.applyFilter(overlay.name, null, search)
+                    .then(data => {
+                        if (!Tooltip.active[overlay.name].displayed) {
+                        // if toolitp is not visible, do not proceed as it would make it visible
+                        return
+                        }
+                        overlay.tmp.searchCount = data.count
+                        overlay.tmp.search = data.search
+                        if (options.prefilter) {
+                            this.refreshSearch(overlay.name)
+                        }
+                        this.initControls(ret.overlay)
+                        this.refreshIndex(overlay.name, true)
+                    })
             }
         })
+        overlay.next = () => {
+            let chain = this.getActiveChain(overlay.name)
+            if (overlay.selected == null || overlay.selected?.length == 0) {
+                overlay.selected = chain[0]
+            } else {
+                let ind = chain.indexOf(overlay.selected)
+                // selected not in chain of items
+                if (ind == -1) {
+                    overlay.selected = chain[0]
+                }
+                // not the last item
+                if (ind < chain.length - 1) {
+                    overlay.selected = chain[ind + 1]
+                }
+            }
+            this.refreshIndex(overlay.name)
+        }
+        overlay.prev = () => {
+            let chain = this.getActiveChain(overlay.name)
+            if (overlay.selected == null || overlay.selected?.length == 0) {
+                overlay.selected = chain[chain.length-1]
+            } else {
+                let ind = chain.indexOf(overlay.selected)
+                // selected not in chain of items
+                if (ind == -1) {
+                    overlay.selected = chain[chain.length-1]
+                }
+                // not first item
+                if (ind > 0) {
+                    overlay.selected = chain[ind - 1]
+                }
+            }
+            this.refreshIndex(overlay.name)
+        }
+        overlay.click = () => {
+            $(overlay.box).find('.w2ui-selected').click()
+        }
         overlay.on('hide:after.attach', event => {
             w2tooltip.hide(overlay.name + '-tooltip')
         })
@@ -1303,6 +1401,9 @@ class MenuTooltip extends Tooltip {
     initControls(overlay) {
         query(overlay.box).find('.w2ui-menu:not(.w2ui-sub-menu)')
             .off('.w2menu')
+            .on('contextmenu.w2menu', event => {
+                event.preventDefault() // prevent browser context menu
+            })
             .on('mouseDown.w2menu', { delegate: '.w2ui-menu-item' }, event => {
                 let dt = event.delegate.dataset
                 this.menuDown(overlay, event, dt.index, dt.parents)
@@ -1328,6 +1429,24 @@ class MenuTooltip extends Tooltip {
             })
             .on('mouseLeave.w2menu', event => {
                 w2tooltip.hide(overlay.name + '-tooltip')
+            })
+            .find('.menu-help')
+            .off('.w2menu')
+            .on('mouseEnter.w2menu', event => {
+                let dt = event.target.parentNode.parentNode.dataset
+                let tooltip = overlay.options.items[dt.index]?.help
+                if (tooltip) {
+                    w2tooltip.show({
+                        name: overlay.name + '-help-tp',
+                        anchor: event.target,
+                        html: tooltip,
+                        position: 'right|left',
+                        hideOn: ['doc-click']
+                    })
+                }
+            })
+            .on('mouseLeave.w2menu', event => {
+                w2tooltip.hide(overlay.name + '-help-tp')
             })
 
         if (['INPUT', 'TEXTAREA'].includes(overlay.anchor.tagName)) {
@@ -1426,6 +1545,10 @@ class MenuTooltip extends Tooltip {
                     }
                     icon_dsp = `<div class="menu-icon">${icon}</span></div>`
                 }
+                // for backward compatibility
+                if (mitem.removable == null && mitem.remove != null) {
+                    mitem.rmovable = mitem.remove
+                }
                 // render only if non-empty
                 if (mitem.type !== 'break' && txt != null && txt !== '' && String(txt).substr(0, 2) != '--') {
                     let classes = ['w2ui-menu-item']
@@ -1434,11 +1557,11 @@ class MenuTooltip extends Tooltip {
                     }
                     let colspan = 1
                     if (icon_dsp === '') colspan++
-                    if (mitem.count == null && mitem.hotkey == null && mitem.remove !== true && mitem.items == null) colspan++
+                    if (mitem.count == null && mitem.hotkey == null && mitem.removable !== true && mitem.items == null) colspan++
                     if (mitem.tooltip == null && mitem.hint != null) mitem.tooltip = mitem.hint // for backward compatibility
                     let count_dsp = ''
-                    if (mitem.remove === true) {
-                        count_dsp = '<span class="remove">x</span>'
+                    if (mitem.removable === true) {
+                        count_dsp = '<span class="menu-remove">x</span>'
                     } else if (mitem.items != null) {
                         let _items = []
                         if (typeof mitem.items == 'function') {
@@ -1446,14 +1569,15 @@ class MenuTooltip extends Tooltip {
                         } else if (Array.isArray(mitem.items)) {
                             _items = mitem.items
                         }
-                        count_dsp   = '<span></span>'
+                        count_dsp   = '<span style="background-color: transparent; border: transparent; box-shadow: none;"></span>' // used as drop arrow
                         subMenu_dsp = `
                             <div class="w2ui-sub-menu-box" style="${mitem.expanded ? '' : 'display: none'}">
                                 ${this.getMenuHTML(options, _items, true, parentIndex.concat(f))}
                             </div>`
                     } else {
                         if (mitem.count != null) count_dsp += '<span>' + mitem.count + '</span>'
-                        if (mitem.hotkey != null) count_dsp += '<span class="hotkey">' + mitem.hotkey + '</span>'
+                        if (mitem.hotkey != null) count_dsp += '<span class="menu-hotkey">' + mitem.hotkey + '</span>'
+                        if (mitem.help != null) count_dsp += '<span class="menu-help">?</span>'
                     }
                     if (mitem.disabled === true) classes.push('w2ui-disabled')
                     if (mitem._noSearchInside === true) classes.push('w2ui-no-search-inside')
@@ -1498,7 +1622,7 @@ class MenuTooltip extends Tooltip {
     }
 
     // Refreshed only selected item highligh, used in keyboard navigation
-    refreshIndex(name) {
+    refreshIndex(name, instant) {
         let overlay = Tooltip.active[name.replace(/[\s\.#]/g, '_')]
         if (!overlay) return
         if (!overlay.displayed) {
@@ -1513,10 +1637,18 @@ class MenuTooltip extends Tooltip {
             .get(0)
         if (el) {
             if (el.offsetTop + el.clientHeight > view.clientHeight + view.scrollTop) {
-                el.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'start' })
+                el.scrollIntoView({
+                    behavior: instant ? 'instant' : 'smooth',
+                    block: instant ? 'center' : 'start',
+                    inline: instant ? 'center' : 'start'
+                })
             }
             if (el.offsetTop < view.scrollTop + (search ? search.clientHeight : 0)) {
-                el.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'end' })
+                el.scrollIntoView({
+                    behavior: instant ? 'instant' : 'smooth',
+                    block: instant ? 'center' : 'end',
+                    inline: instant ? 'center' : 'end'
+                })
             }
         }
     }
@@ -1531,11 +1663,11 @@ class MenuTooltip extends Tooltip {
         query(overlay.box).find('.w2ui-no-items').hide()
         query(overlay.box).find('.w2ui-menu-item, .w2ui-menu-divider').each(el => {
             let cur = this.getCurrent(name, el.getAttribute('index'))
-            if (cur.item.hidden) {
+            if (cur.item?.hidden) {
                 query(el).hide()
             } else {
                 let search = overlay.tmp?.search
-                if (search && overlay.options.markSearch) {
+                if (overlay.options.markSearch) {
                     w2utils.marker(el, search, { onlyFirst: overlay.options.match == 'begins' })
                 }
                 query(el).show()
@@ -1557,7 +1689,7 @@ class MenuTooltip extends Tooltip {
             }
         })
         // show empty message
-        if (overlay.tmp.searchCount == 0 || overlay.options?.items.length == 0) {
+        if (overlay.tmp.searchCount == 0 || overlay.options?.items?.length == 0) {
             if (query(overlay.box).find('.w2ui-no-items').length == 0) {
                 query(overlay.box).find('.w2ui-menu:not(.w2ui-sub-menu)').append(`
                     <div class="w2ui-no-items">
@@ -1569,17 +1701,18 @@ class MenuTooltip extends Tooltip {
     }
 
     /**
-     * Loops through the items and markes item.hidden for those that need to be hidden.
-     * Return the number of visible items.
+     * Loops through the items and markes item.hidden = true for those that need to be hidden, and item.hidden = false
+     * for those that are visible. Return a promise (since items can be on the server) with the number of visible items.
      */
-    applyFilter(name, items, search) {
+    applyFilter(name, items, search, debounce) {
         let count = 0
         let overlay = Tooltip.active[name.replace(/[\s\.#]/g, '_')]
         let options = overlay.options
-        if (options.filter === false) {
-            return
-        }
-        if (items == null) items = overlay.options.items
+        let resolve, reject
+        let prom = new Promise((res, rej) => {
+            resolve = res
+            reject = rej
+        })
         if (search == null) {
             if (['INPUT', 'TEXTAREA'].includes(overlay.anchor.tagName)) {
                 search = overlay.anchor.value
@@ -1596,6 +1729,54 @@ class MenuTooltip extends Tooltip {
             } else if (options.selected?.id) {
                 selectedIds = [options.selected.id]
             }
+        }
+        overlay.tmp.activeChain = null
+        // if url is defined, get items from it
+        let remote = overlay.tmp.remote ?? { hasMore: true, emtpySet: false, search: null, total: -1 }
+        if (items == null && options.url && remote.hasMore && remote.search !== search) {
+            let proceed = true
+            // only when items == null because it is case of nested items
+            let msg = w2utils.lang('Loading...')
+            if (search.length < options.minLength && remote.emptySet !== true) {
+                msg = w2utils.lang('${count} letters or more...', { count: options.minLength })
+                proceed = false
+                if (search === '') {
+                    msg = w2utils.lang(options.msgSearch)
+                }
+            }
+            query(overlay.box).find('.w2ui-no-items').html(msg)
+
+            remote.search = search
+            options.items = []
+            overlay.tmp.remote = remote
+            if (proceed) {
+                this.request(overlay, search, debounce)
+                    .then(remoteItems => {
+                        this.update(name, remoteItems)
+                        this.applyFilter(name, null, search).then(data => {
+                            resolve(data)
+                        })
+                    })
+                    .catch(error => {
+                        console.log('Server Request error', error)
+                    })
+            }
+            return prom
+        }
+        let edata
+        // only trigger search event when data is present and for the top level
+        if (items == null) {
+            edata = this.trigger('search', { search, overlay, prom, resolve, reject })
+            if (edata.isCancelled === true) {
+                return prom
+            }
+        }
+        if (items == null) {
+            items = overlay.options.items
+        }
+        if (options.filter === false) {
+            resolve({ count: -1, search })
+            return prom
         }
         items.forEach(item => {
             let prefix = ''
@@ -1617,20 +1798,147 @@ class MenuTooltip extends Tooltip {
             // search nested items
             if (Array.isArray(item.items) && item.items.length > 0) {
                 delete item._noSearchInside
-                let subCount = this.applyFilter(name, item.items, search)
-                if (subCount > 0) {
-                    count += subCount
-                    if (item.hidden) item._noSearchInside = true
-                    // only expand items if search is not empty
-                    if (search) item.expanded = true
-                    item.hidden = false
-                }
+                this.applyFilter(name, item.items, search).then(data => {
+                    let subCount = data.count
+                    if (subCount > 0) {
+                        count += subCount
+                        if (item.hidden) item._noSearchInside = true
+                        // only expand items if search is not empty
+                        if (search) item.expanded = true
+                        item.hidden = false
+                    }
+                    })
             }
             if (item.hidden !== true) count++
         })
-        overlay.tmp.activeChain = this.getActiveChain(name, items)
-        overlay.selected = null
-        return count
+        resolve({ count, search })
+        edata?.finish()
+        return prom
+    }
+
+    request(overlay, search, debounce) {
+        let options = overlay.options
+        let remote = overlay.tmp.remote
+        let resolve, reject // promise functions
+        if ((options.items.length === 0 && remote.total !== 0)
+            || (remote.total == options.cacheMax && search.length > remote.search.length)
+            || (search.length >= remote.search.length && search.substr(0, remote.search.length) !== remote.search)
+            || (search.length < remote.search.length))
+        {
+            // Aabort previous request if any
+            if (remote.controller) {
+                remote.controller.abort()
+            }
+            remote.loading = true
+            clearTimeout(remote.timeout)
+            remote.timeout = setTimeout(() => {
+                let url = options.url
+                let postData = { search, max: options.cacheMax }
+                Object.assign(postData, options.postData)
+                // trigger event
+                let edata = this.trigger('request', {
+                    search, overlay, url, postData,
+                    httpMethod: options.method ?? 'GET',
+                    httpHeaders: {}
+                })
+                if (edata.isCancelled === true) return
+                // if event updated url and postData, use it
+                url = new URL(edata.detail.url, location)
+                let fetchOptions = w2utils.prepareParams(url, {
+                    method: edata.detail.httpMethod,
+                    headers: edata.detail.httpHeaders,
+                    body: edata.detail.postData
+                })
+                // Create new abort controller
+                remote.controller = new AbortController()
+                fetchOptions.signal = remote.controller.signal
+                // send request
+                fetch(url, fetchOptions)
+                    .then(resp => resp.json())
+                    .then(data => {
+                        remote.controller = null
+                        // trigger event
+                        let edata = overlay.trigger('load', { search: postData.search, overlay, data })
+                        if (edata.isCancelled === true) return
+                        // default behavior
+                        data = edata.detail.data
+                        if (typeof data === 'string') data = JSON.parse(data)
+                        // if server just returns array
+                        if (Array.isArray(data)) {
+                            data = { records: data }
+                        }
+                        // needed for backward compatibility
+                        if (data.records == null && data.items != null) {
+                            data.records = data.items
+                            delete data.items
+                        }
+                        // handles Golang marshal of empty arrays to null
+                        if (!data.error && data.records == null) {
+                            data.records = []
+                        }
+                        if (!Array.isArray(data.records)) {
+                            console.error('ERROR: server did not return proper data structure', '\n',
+                                ' - it should return', { records: [{ id: 1, text: 'item' }] }, '\n',
+                                ' - or just an array ', [{ id: 1, text: 'item' }], '\n',
+                                ' - or if errorr ', { error: true, message: 'error message' })
+                            return
+                        }
+                        // remove all extra items if more then needed for cache
+                        if (data.records.length >= options.cacheMax) {
+                            data.records.splice(options.cacheMax, data.records.length)
+                            remote.hasMore = true
+                        } else {
+                            remote.hasMore = false
+                        }
+                        // map id and text
+                        if (options.recId == null && options.recid != null) options.recId = options.recid // since lower-case recid is used in grid
+                        if (options.recId || options.recText) {
+                            data.records.forEach((item) => {
+                                if (typeof options.recId === 'string') item.id = item[options.recId]
+                                if (typeof options.recId === 'function') item.id = options.recId(item)
+                                if (typeof options.recText === 'string') item.text = item[options.recText]
+                                if (typeof options.recText === 'function') item.text = options.recText(item)
+                            })
+                        }
+                        // remember stats
+                        remote.loading = false
+                        remote.search = search
+                        remote.total = data.records.length
+                        remote.lastError = ''
+                        remote.emptySet = (search === '' && data.records.length === 0 ? true : false)
+                        // event after
+                        edata.finish()
+                        resolve(w2utils.normMenu(data.records))
+                    })
+                    .catch(error => {
+                        let edata = this.trigger('error', { overlay, search, error })
+                        if (edata.isCancelled === true) return
+                        // default behavior
+                        if (error?.name !== 'AbortError') {
+                            console.error('ERROR: Server communication failed.', '\n',
+                                ' - it should return', { records: [{ id: 1, text: 'item' }] }, '\n',
+                                ' - or just an array ', [{ id: 1, text: 'item' }], '\n',
+                                ' - or if errorr ', { error: true, message: 'error message' })
+                        }
+                        // reset stats
+                        remote.loading = false
+                        remote.search = ''
+                        remote.total = -1
+                        remote.emptySet = true
+                        remote.lastError = (edata.detail.error || 'Server communication failed')
+                        options.items = []
+                        // event after
+                        edata.finish()
+                        reject()
+                    })
+                // event after
+                edata.finish()
+            }, debounce ? (options.debounce ?? 350) : 0)
+        }
+        return new Promise((res, rej) => {
+            resolve = res
+            reject = rej
+        })
     }
 
     /**
@@ -1644,7 +1952,7 @@ class MenuTooltip extends Tooltip {
         }
         if (items == null) items = overlay.options.items
         items.forEach((item, ind) => {
-            if (!item.hidden && !item.disabled && !item?.text.startsWith('--')) {
+            if (!item.hidden && !item.disabled && !item?.text?.startsWith('--')) {
                 res.push(parents.concat([ind]).join('-'))
                 if (Array.isArray(item.items) && item.items.length > 0 && item.expanded) {
                     parents.push(ind)
@@ -1670,6 +1978,9 @@ class MenuTooltip extends Tooltip {
                 items = items[id].items
             })
         }
+        if (typeof items == 'function') {
+            items = items({ overlay, index, parentIndex, event })
+        }
         let item = items[index]
         if (item.disabled) {
             return
@@ -1690,7 +2001,8 @@ class MenuTooltip extends Tooltip {
             })
         }
         if ((options.type === 'check' || options.type === 'radio') && item.group !== false
-                    && !query(event.target).hasClass('remove')
+                    && !query(event.target).hasClass('menu-remove')
+                    && !query(event.target).hasClass('menu-help')
                     && !query(event.target).closest('.w2ui-menu-item').hasClass('has-sub-menu')) {
             item.checked = options.type == 'radio' ? true : !item.checked
             if (item.checked) {
@@ -1708,7 +2020,7 @@ class MenuTooltip extends Tooltip {
             }
         }
         // highlight record
-        if (!query(event.target).hasClass('remove')) {
+        if (!query(event.target).hasClass('menu-remove') && !query(event.target).hasClass('menu-help')) {
             menu.find('.w2ui-menu-item').removeClass('w2ui-selected')
             query(event.delegate).addClass('w2ui-selected')
         }
@@ -1734,11 +2046,11 @@ class MenuTooltip extends Tooltip {
             items = items({ overlay, index, parentIndex, event })
         }
         let item = items[index]
-        if (item.disabled && !query(event.target).hasClass('remove')) {
+        if (!item || (item.disabled && !query(event.target).hasClass('menu-remove'))) {
             return
         }
         let edata
-        if (query(event.target).hasClass('remove')) {
+        if (query(event.target).hasClass('menu-remove')) {
             edata = this.trigger('remove', { originalEvent: event, target: overlay.name,
                 overlay, item, index, parentIndex, el: $item[0] })
             if (edata.isCancelled === true) {
@@ -1805,12 +2117,12 @@ class MenuTooltip extends Tooltip {
 
     keyUp(overlay, event) {
         let options = overlay.options
-        let search  = event.target.value
-        let key     = event.keyCode
-        let filter  = true
+        let search = event.target.value
+        let filter = true
         let refreshIndex = false
-        switch (key) {
-            case 8: { // delete
+        switch (event.keyCode) {
+            case 46:  // delete
+            case 8: { // backspace
                 // if search empty and delete is clicked, do not filter nor show overlay
                 if (search === '' && !overlay.displayed) filter = false
                 break
@@ -1871,22 +2183,8 @@ class MenuTooltip extends Tooltip {
                 if (!overlay.displayed) {
                     break
                 }
-                let chain = this.getActiveChain(overlay.name)
-                if (overlay.selected == null || overlay.selected?.length == 0) {
-                    overlay.selected = chain[chain.length-1]
-                } else {
-                    let ind = chain.indexOf(overlay.selected)
-                    // selected not in chain of items
-                    if (ind == -1) {
-                        overlay.selected = chain[chain.length-1]
-                    }
-                    // not first item
-                    if (ind > 0) {
-                        overlay.selected = chain[ind - 1]
-                    }
-                }
+                overlay.prev()
                 filter = false
-                refreshIndex = true
                 event.preventDefault()
                 break
             }
@@ -1894,37 +2192,25 @@ class MenuTooltip extends Tooltip {
                 if (!overlay.displayed) {
                     break
                 }
-                let chain = this.getActiveChain(overlay.name)
-                if (overlay.selected == null || overlay.selected?.length == 0) {
-                    overlay.selected = chain[0]
-                } else {
-                    let ind = chain.indexOf(overlay.selected)
-                    // selected not in chain of items
-                    if (ind == -1) {
-                        overlay.selected = chain[0]
-                    }
-                    // not the last item
-                    if (ind < chain.length - 1) {
-                        overlay.selected = chain[ind + 1]
-                    }
-                }
+                overlay.next()
                 filter = false
-                refreshIndex = true
                 event.preventDefault()
                 break
             }
         }
         // filter
-        if (filter && overlay.displayed && ((options.filter && event._searchType == 'filter')
-                    || (options.search && event._searchType == 'search'))) {
-            let count = this.applyFilter(overlay.name, null, search)
-            overlay.tmp.searchCount = count
-            overlay.tmp.search = search
-            // if selected is not in searched items
-            if (count === 0 || !this.getActiveChain(overlay.name).includes(overlay.selected)) {
-                overlay.selected = null
-            }
-            this.refreshSearch(overlay.name)
+        if (filter && overlay.displayed
+                && ((options.filter && event._searchType == 'filter') || (options.search && event._searchType == 'search'))) {
+            this.applyFilter(overlay.name, null, search, true)
+                .then(data => {
+                    overlay.tmp.searchCount = data.count
+                    overlay.tmp.search = data.search
+                    // if selected is not in searched items
+                    if (data.count === 0 || !this.getActiveChain(overlay.name).includes(overlay.selected)) {
+                        overlay.selected = null
+                    }
+                    this.refreshSearch(overlay.name)
+                })
         }
         if (refreshIndex) {
             this.refreshIndex(overlay.name)
@@ -1942,10 +2228,11 @@ class DateTooltip extends Tooltip {
             position      : 'top|bottom',
             class         : 'w2ui-calendar',
             type          : 'date', // can be date/time/datetime
-            format        : '',
             value         : '', // initial date (in w2utils.settings format)
+            format        : '',
             start         : null,
             end           : null,
+            btnNow        : false,
             blockDates    : [], // array of blocked dates
             blockWeekdays : [], // blocked weekdays 0 - sunday, 1 - monday, etc
             colored       : {}, // ex: { '3/13/2022': 'bg-color|text-color' }
@@ -1960,7 +2247,7 @@ class DateTooltip extends Tooltip {
 
     attach(anchor, text) {
         let options
-        if (arguments.length == 1 && anchor.anchor) {
+        if (arguments.length == 1 && anchor instanceof Object) {
             options = anchor
             anchor = options.anchor
         } else if (arguments.length === 2 && text != null && typeof text === 'object') {
@@ -2070,7 +2357,8 @@ class DateTooltip extends Tooltip {
         }
 
         // events for next/prev buttons and title
-        query(overlay.box).find('.w2ui-cal-title')
+        query(overlay.box)
+            .find('.w2ui-cal-title')
             .off('.calendar')
             // click on title
             .on('click.calendar', event => {
@@ -2125,6 +2413,9 @@ class DateTooltip extends Tooltip {
         // events for dates
         query(overlay.box)
             .off('.calendar')
+            .on('contextmenu.calendar', event => {
+                event.preventDefault() // prevent browser context menu
+            })
             .on('click.calendar', { delegate: '.w2ui-day.w2ui-date' }, event => {
                 if (options.type == 'datetime') {
                     overlay.newDate = query(event.target).attr('date')
@@ -2453,253 +2744,3 @@ let w2color   = new ColorTooltip()
 let w2date    = new DateTooltip()
 
 export { w2tooltip, w2color, w2menu, w2date, Tooltip }
-
-/*
-// pull records from remote source for w2menu
-
-clearCache() {
-    let options          = this.options
-    options.items        = []
-    this.tmp.xhr_loading = false
-    this.tmp.xhr_search  = ''
-    this.tmp.xhr_total   = -1
-}
-
-request(interval) {
-    let obj     = this
-    let options = this.options
-    let search  = $(obj.el).val() || ''
-    // if no url - do nothing
-    if (!options.url) return
-    // --
-    if (obj.type === 'enum') {
-        let tmp = $(obj.helpers.multi).find('input')
-        if (tmp.length === 0) search = ''; else search = tmp.val()
-    }
-    if (obj.type === 'list') {
-        let tmp = $(obj.helpers.focus).find('input')
-        if (tmp.length === 0) search = ''; else search = tmp.val()
-    }
-    if (options.minLength !== 0 && search.length < options.minLength) {
-        options.items = [] // need to empty the list
-        this.updateOverlay()
-        return
-    }
-    if (interval == null) interval = options.interval
-    if (obj.tmp.xhr_search == null) obj.tmp.xhr_search = ''
-    if (obj.tmp.xhr_total == null) obj.tmp.xhr_total = -1
-    // check if need to search
-    if (options.url && $(obj.el).prop('readonly') !== true && $(obj.el).prop('disabled') !== true && (
-        (options.items.length === 0 && obj.tmp.xhr_total !== 0) ||
-            (obj.tmp.xhr_total == options.cacheMax && search.length > obj.tmp.xhr_search.length) ||
-            (search.length >= obj.tmp.xhr_search.length && search.substr(0, obj.tmp.xhr_search.length) !== obj.tmp.xhr_search) ||
-            (search.length < obj.tmp.xhr_search.length)
-    )) {
-        // empty list
-        if (obj.tmp.xhr) try { obj.tmp.xhr.abort() } catch (e) {}
-        obj.tmp.xhr_loading = true
-        obj.search()
-        // timeout
-        clearTimeout(obj.tmp.timeout)
-        obj.tmp.timeout = setTimeout(() => {
-            // trigger event
-            let url      = options.url
-            let postData = {
-                search : search,
-                max    : options.cacheMax
-            }
-            $.extend(postData, options.postData)
-            let edata = obj.trigger({ phase: 'before', type: 'request', search: search, target: obj.el, url: url, postData: postData })
-            if (edata.isCancelled === true) return
-            url             = edata.url
-            postData        = edata.postData
-            let ajaxOptions = {
-                type     : 'GET',
-                url      : url,
-                data     : postData,
-                dataType : 'JSON' // expected from server
-            }
-            if (options.method) ajaxOptions.type = options.method
-            if (w2utils.settings.dataType === 'JSON') {
-                ajaxOptions.type        = 'POST'
-                ajaxOptions.data        = JSON.stringify(ajaxOptions.data)
-                ajaxOptions.contentType = 'application/json'
-            }
-            if (w2utils.settings.dataType === 'HTTPJSON') {
-                ajaxOptions.data = { request: JSON.stringify(ajaxOptions.data) }
-            }
-            if (w2utils.settings.dataType === 'RESTFULLJSON') {
-                ajaxOptions.data = JSON.stringify(ajaxOptions.data)
-                ajaxOptions.contentType = 'application/json'
-            }
-            if (options.method != null) ajaxOptions.type = options.method
-            obj.tmp.xhr = $.ajax(ajaxOptions)
-                .done((data, status, xhr) => {
-                    // trigger event
-                    let edata2 = obj.trigger({ phase: 'before', type: 'load', target: obj.el, search: postData.search, data: data, xhr: xhr })
-                    if (edata2.isCancelled === true) return
-                    // default behavior
-                    data = edata2.data
-                    if (typeof data === 'string') data = JSON.parse(data)
-                    // if server just returns array
-                    if (Array.isArray(data)) {
-                        data = { records: data }
-                    }
-                    // needed for backward compatibility
-                    if (data.records == null && data.items != null) {
-                        data.records = data.items
-                        delete data.items
-                    }
-                    // handles Golang marshal of empty arrays to null
-                    if (data.status == 'success' && data.records == null) {
-                        data.records = []
-                    }
-                    if (!Array.isArray(data.records)) {
-                        console.error('ERROR: server did not return proper data structure', '\n',
-                            ' - it should return', { status: 'success', records: [{ id: 1, text: 'item' }] }, '\n',
-                            ' - or just an array ', [{ id: 1, text: 'item' }], '\n',
-                            ' - actual response', typeof data === 'object' ? data : xhr.responseText)
-                        return
-                    }
-                    // remove all extra items if more then needed for cache
-                    if (data.records.length > options.cacheMax) data.records.splice(options.cacheMax, 100000)
-                    // map id and text
-                    if (options.recId == null && options.recid != null) options.recId = options.recid // since lower-case recid is used in grid
-                    if (options.recId || options.recText) {
-                        data.records.forEach((item) => {
-                            if (typeof options.recId === 'string') item.id = item[options.recId]
-                            if (typeof options.recId === 'function') item.id = options.recId(item)
-                            if (typeof options.recText === 'string') item.text = item[options.recText]
-                            if (typeof options.recText === 'function') item.text = options.recText(item)
-                        })
-                    }
-                    // remember stats
-                    obj.tmp.xhr_loading = false
-                    obj.tmp.xhr_search  = search
-                    obj.tmp.xhr_total   = data.records.length
-                    obj.tmp.lastError   = ''
-                    options.items       = w2utils.normMenu(data.records)
-                    if (search === '' && data.records.length === 0) obj.tmp.emptySet = true; else obj.tmp.emptySet = false
-                    // preset item
-                    let find_selected = $(obj.el).data('find_selected')
-                    if (find_selected) {
-                        let sel
-                        if (Array.isArray(find_selected)) {
-                            sel = []
-                            find_selected.forEach((find) => {
-                                let isFound = false
-                                options.items.forEach((item) => {
-                                    if (item.id == find || (find && find.id == item.id)) {
-                                        sel.push($.extend(true, {}, item))
-                                        isFound = true
-                                    }
-                                })
-                                if (!isFound) sel.push(find)
-                            })
-                        } else {
-                            sel = find_selected
-                            options.items.forEach((item) => {
-                                if (item.id == find_selected || (find_selected && find_selected.id == item.id)) {
-                                    sel = item
-                                }
-                            })
-                        }
-                        $(obj.el).data('selected', sel).removeData('find_selected').trigger('input').trigger('change')
-                    }
-                    obj.search()
-                    // event after
-                    obj.trigger($.extend(edata2, { phase: 'after' }))
-                })
-                .fail((xhr, status, error) => {
-                    // trigger event
-                    let errorObj = { status: status, error: error, rawResponseText: xhr.responseText }
-                    let edata2   = obj.trigger({ phase: 'before', type: 'error', target: obj.el, search: search, error: errorObj, xhr: xhr })
-                    if (edata2.isCancelled === true) return
-                    // default behavior
-                    if (status !== 'abort') {
-                        let data
-                        try { data = JSON.parse(xhr.responseText) } catch (e) {}
-                        console.error('ERROR: server did not return proper data structure', '\n',
-                            ' - it should return', { status: 'success', records: [{ id: 1, text: 'item' }] }, '\n',
-                            ' - or just an array ', [{ id: 1, text: 'item' }], '\n',
-                            ' - actual response', typeof data === 'object' ? data : xhr.responseText)
-                    }
-                    // reset stats
-                    obj.tmp.xhr_loading = false
-                    obj.tmp.xhr_search  = search
-                    obj.tmp.xhr_total   = 0
-                    obj.tmp.emptySet    = true
-                    obj.tmp.lastError   = (edata2.error || 'Server communication failed')
-                    options.items       = []
-                    obj.clearCache()
-                    obj.search()
-                    obj.updateOverlay(false)
-                    // event after
-                    obj.trigger($.extend(edata2, { phase: 'after' }))
-                })
-            // event after
-            obj.trigger($.extend(edata, { phase: 'after' }))
-        }, interval)
-    }
-}
-
-search() {
-    let obj      = this
-    let options  = this.options
-    let search   = $(obj.el).val()
-    let target   = obj.el
-    let ids      = []
-    let selected = $(obj.el).data('selected')
-    if (obj.type === 'enum') {
-        target = $(obj.helpers.multi).find('input')
-        search = target.val()
-        for (let s in selected) { if (selected[s]) ids.push(selected[s].id) }
-    }
-    else if (obj.type === 'list') {
-        target = $(obj.helpers.focus).find('input')
-        search = target.val()
-        for (let s in selected) { if (selected[s]) ids.push(selected[s].id) }
-    }
-    let items = options.items
-    if (obj.tmp.xhr_loading !== true) {
-        let shown = 0
-        for (let i = 0; i < items.length; i++) {
-            let item = items[i]
-            if (options.compare != null) {
-                if (typeof options.compare === 'function') {
-                    item.hidden = (options.compare.call(this, item, search) === false ? true : false)
-                }
-            } else {
-                let prefix = ''
-                let suffix = ''
-                if (['is', 'begins'].indexOf(options.match) !== -1) prefix = '^'
-                if (['is', 'ends'].indexOf(options.match) !== -1) suffix = '$'
-                try {
-                    let re = new RegExp(prefix + search + suffix, 'i')
-                    if (re.test(item.text) || item.text === '...') item.hidden = false; else item.hidden = true
-                } catch (e) {}
-            }
-            if (options.filter === false) item.hidden = false
-            // do not show selected items
-            if (obj.type === 'enum' && $.inArray(item.id, ids) !== -1) item.hidden = true
-            if (item.hidden !== true) { shown++; delete item.hidden }
-        }
-        // preselect first item
-        options.index = []
-        options.spinner = false
-        setTimeout(() => {
-            if (options.markSearch && $('#w2ui-overlay .no-matches').length == 0) { // do not highlight when no items
-                $('#w2ui-overlay').w2marker(search)
-            }
-        }, 1)
-    } else {
-        items.splice(0, options.cacheMax)
-        options.spinner = true
-    }
-    // only update overlay when it is displayed already
-    if ($('#w2ui-overlay').length > 0) {
-        obj.updateOverlay()
-    }
-}
-
-*/

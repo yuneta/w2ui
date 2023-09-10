@@ -1,0 +1,132 @@
+<div class="content">
+    <div id="example_title">
+        <h1>Common Overlays</h1>
+        There are several common tooltips/overlays that are frequently used. They are:
+        <ul>
+            <li>Date</li>
+            <li>Time</li>
+            <li>Date & Time</li>
+            <li>Color Picker</li>
+        </ul>
+    </div>
+    <div id="example_view"></div>
+    <div id="example_code"></div>
+</div>
+
+<!--CODE-->
+<style>
+    #some-div {
+        width: 200px;
+        text-align: center;
+        padding: 10px;
+        border: 1px solid #efefef;
+        border-radius: 4px;
+        background-color: #f8f8f5;
+    }
+</style>
+
+<div style="margin-top: 25px;">
+    <button class="w2ui-btn action" data-value='{ "method": "color" }'>Color (2.0+)</button>
+    <button class="w2ui-btn action" data-value='{ "method": "date", "type": "date" }'>Date (2.0+)</button>
+    <button class="w2ui-btn action" data-value='{ "method": "date", "type": "time" }'>Time (2.0+)</button>
+    <button class="w2ui-btn action" data-value='{ "method": "date", "type": "datetime" }'>Date & Time (2.0+)</button>
+    <button class="w2ui-btn action" data-value='{ "method": "hide" }'>Hide Tooltip</button>
+</div>
+
+<div style="height: 50px"></div>
+
+<div style="width: 200px; float: left">
+    Position:
+    <div style="padding: 10px; margin-bottom: 20px; line-height: 2">
+        <label><input name="position" type="radio" value="left"> &nbsp;left</label><br>
+        <label><input name="position" type="radio" value="right"> &nbsp;right</label><br>
+        <label><input name="position" type="radio" value="top" checked> &nbsp;top</label><br>
+        <label><input name="position" type="radio" value="bottom"> &nbsp;bottom</label><br>
+        <label><input name="position" type="radio" value="top|bottom"> &nbsp;top or bottom</label><br>
+        <label><input name="position" type="radio" value="right|left"> &nbsp;right or left</label><br>
+    </div>
+</div>
+<div style="width: 300px; float: left">
+    Anchor Alignment (only for TOP/BOTTOM):<br>
+    <div style="padding: 10px; margin-bottom: 20px; line-height: 2; float: left; width: 200px">
+        <label><input name="align" type="radio" value="none" checked> &nbsp;none</label><br>
+        <label><input name="align" type="radio" value="left"> &nbsp;left</label><br>
+        <label><input name="align" type="radio" value="right"> &nbsp;right</label><br>
+    </div>
+</div>
+<div style="clear: both"></div>
+
+<!--CODE-->
+<script type="module">
+import { w2tooltip, w2color, w2date, w2utils, query } from '__W2UI_PATH__'
+
+let align = 'none'
+let position = 'top'
+let lastColor = ''
+
+query('input[name=position]').on('click', event => position = event.target.value )
+query('input[name=align]').on('click', event => align = event.target.value)
+query('button.action').on('click', event => {
+    let options = JSON.parse(query(event.target).attr('data-value'))
+    if (options.method == "color") {
+        w2color.show({
+            align,
+            position,
+            color: lastColor,
+            name: 'demo-tooltip',
+            anchor: event.target,
+            onSelect(event) {
+                w2utils.notify(`Selected "${event.detail.color}" color`)
+            }
+        })
+        .then(() => {
+            console.log('Tooltip is ready')
+        })
+        .show(() => {
+            console.log('Tooltip is shown')
+        })
+        .hide(() => {
+            console.log('Tooltip is hidden')
+        })
+        .liveUpdate((event) => {
+            console.log(`Color live change "${event.detail.color}"`)
+        })
+        .select((event) => {
+            lastColor = event.detail.color
+            console.log(`Color selected "${event.detail.color}"`)
+        })
+    }
+    if (options.method == "date") {
+        w2date.show({
+            name: 'demo-tooltip',
+            anchor: event.target,
+            type: options.type,
+            align,
+            position,
+            value         : '', // initial date (in w2utils.settings format)
+            format        : '',
+            start         : null, // Date() object defineing selection start date
+            end           : null, // Date() object defineing selection end date
+            btnNow        : true, // "Today" or "Now" button
+            blockDates    : [],   // array of blocked dates
+            blockWeekdays : [],   // blocked weekdays 0 - sunday, 1 - monday, etc
+            colored       : {}    // ex: { '3/13/2022': 'bg-color|text-color' }
+        })
+        .then(() => {
+            console.log('Tooltip is ready')
+        })
+        .show(() => {
+            console.log('Tooltip is shown')
+        })
+        .hide(() => {
+            console.log('Tooltip is hidden')
+        })
+        .select((event) => {
+            w2utils.notify(`Date selected "${event.detail.date}"`)
+        })
+    }
+    if (options.method == 'hide') {
+        w2tooltip.hide('demo-tooltip')
+    }
+})
+</script>

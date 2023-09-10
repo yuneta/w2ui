@@ -42,6 +42,7 @@ query(async function () {
                 { id: 'form', type: 'radio', text: 'Forms', icon: 'fa fa-pencil-square-o', route: 'form/1' },
                 { id: 'fields', type: 'radio', text: 'Fields', icon: 'fa fa-pencil-square-o', route: 'fields/1' },
                 { id: 'popup', type: 'radio', text: 'Popup', icon: 'fa fa-list-alt', route: 'popup/1' },
+                { id: 'tooltip', type: 'radio', text: 'Tooltip', icon: 'fa fa-comment-o', route: 'tooltip/1' },
                 { id: 'utils', type: 'radio', text: 'Utils', icon: 'fa fa-star-o', route: 'utils/1' },
                 { type: 'spacer' },
                 { type: 'menu-radio', id: 'locale', icon: 'fa fa-language',
@@ -130,6 +131,7 @@ query(async function () {
                 },
                 { id: 'combo-2.0', text: 'Features 2.0+', img: 'icon-folder', group: true, expanded: true, hidden: true,
                     nodes: [
+                        { id: 'combo/16', text: 'Search & Result', icon: 'fa fa-star-o' },
                         { id: 'combo/14', text: 'Base UI Class', icon: 'fa fa-star-o' },
                         { id: 'combo/15', text: 'ES6 Modules', icon: 'fa fa-star-o' },
                     ]
@@ -232,6 +234,8 @@ query(async function () {
                     nodes: [
                         { id: 'toolbar/12', text: 'Badge Control', icon: 'fa fa-hand-o-up' },
                         { id: 'toolbar/13', text: 'Events', icon: 'fa fa-hand-o-up' },
+                        { id: 'toolbar/14', text: 'Label & Input', icon: 'fa fa-hand-o-up' },
+                        { id: 'toolbar/15', text: 'Button Groups', icon: 'fa fa-hand-o-up' },
                     ]
                 },
                 { id: 'sidebar', text: 'Sidebar Basic', img: 'icon-folder', group: true, expanded: true, hidden: true,
@@ -252,14 +256,18 @@ query(async function () {
                         { id: 'sidebar/10', text: 'In/Out of Focus', icon: 'fa fa-hand-o-up' },
                         { id: 'sidebar/11', text: 'Tree Like Sidebars', icon: 'fa fa-hand-o-up' },
                         { id: 'sidebar/12', text: 'Level Padding', icon: 'fa fa-hand-o-up' },
-                        { id: 'sidebar/13', text: 'Node Handle', icon: 'fa fa-hand-o-up' },
+                        { id: 'sidebar/13', text: 'Context Menu', icon: 'fa fa-hand-o-up' },
                     ]
                 },
                 { id: 'sidebar-2.0', text: 'Features 2.0+', img: 'icon-folder', group: true, expanded: true, hidden: true,
                     nodes: [
-                        { id: 'sidebar/14', text: 'Sort Nodes', icon: 'fa fa-hand-o-up' },
-                        { id: 'sidebar/15', text: 'Search Nodes', icon: 'fa fa-hand-o-up' },
-                        { id: 'sidebar/16', text: 'Badge Control', icon: 'fa fa-hand-o-up' }
+                        { id: 'sidebar/14', text: 'Custom Icons', icon: 'fa fa-hand-o-up' },
+                        { id: 'sidebar/15', text: 'Node Handles', icon: 'fa fa-hand-o-up' },
+                        { id: 'sidebar/16', text: 'Node Badges', icon: 'fa fa-hand-o-up' },
+                        { id: 'sidebar/17', text: 'Sort Nodes', icon: 'fa fa-hand-o-up' },
+                        { id: 'sidebar/18', text: 'Search Nodes', icon: 'fa fa-hand-o-up' },
+                        { id: 'sidebar/19', text: 'Rename Nodes', icon: 'fa fa-hand-o-up' },
+                        { id: 'sidebar/20', text: 'Reorder Nodes', icon: 'fa fa-hand-o-up' },
                     ]
                 },
                 { id: 'tabs', text: 'Tabs Basic', img: 'icon-folder', group: true, expanded: true, hidden: true,
@@ -367,6 +375,21 @@ query(async function () {
                         { id: 'popup/11', text: 'Promises', icon: 'fa fa-list-alt' }
                     ]
                 },
+                { id: 'tooltip', text: 'Tooltip Basic', img: 'icon-folder', group: true, expanded: true, hidden: true,
+                    nodes: [
+                        { id: 'tooltip/1', text: 'Tooltips', icon: 'fa fa-comment-o' },
+                        { id: 'tooltip/2', text: 'Attach & Forget', icon: 'fa fa-comment-o' },
+                        { id: 'tooltip/3', text: 'Common Overlays', icon: 'fa fa-comment-o' },
+                        { id: 'tooltip/4', text: 'Menu Overlay', icon: 'fa fa-comment-o' },
+                    ]
+                },
+                { id: 'tooltip-2.0', text: 'Features 2.0+', img: 'icon-folder', group: true, expanded: true, hidden: true,
+                    nodes: [
+                        { id: 'tooltip/5', text: 'Searchable Menu', icon: 'fa fa-comment-o' },
+                        { id: 'tooltip/6', text: 'Menu Icons & Badges', icon: 'fa fa-comment-o' },
+                        { id: 'tooltip/7', text: 'Advanced Controls', icon: 'fa fa-comment-o' },
+                    ]
+                },
                 { id: 'utils', text: 'Utils Basic', img: 'icon-folder', group: true, expanded: true, hidden: true,
                     nodes: [
                         { id: 'utils/1', text: 'Validation', icon: 'fa fa-star-o' },
@@ -376,28 +399,24 @@ query(async function () {
                 },
                 { id: 'utils-1.5', text: 'Features 1.5+', img: 'icon-folder', group: true, expanded: true, hidden: true,
                     nodes: [
-                        { id: 'utils/4', text: 'Tooltips', icon: 'fa fa-star-o' },
-                        { id: 'utils/5', text: 'Overlays', icon: 'fa fa-star-o' },
-                        { id: 'utils/9', text: 'Menus', icon: 'fa fa-star-o' },
-                        { id: 'utils/6', text: 'Formatters', icon: 'fa fa-star-o' },
-                        { id: 'utils/7', text: 'Color Utils', icon: 'fa fa-star-o' },
-                        { id: 'utils/8', text: 'Text Marker', icon: 'fa fa-star-o' },
-                        { id: 'utils/10', text: 'Natural Compare', icon: 'fa fa-star-o' },
+                        { id: 'utils/4', text: 'Formatters', icon: 'fa fa-star-o' },
+                        { id: 'utils/5', text: 'Color Utils', icon: 'fa fa-star-o' },
+                        { id: 'utils/6', text: 'Text Marker', icon: 'fa fa-star-o' },
+                        { id: 'utils/7', text: 'Natural Compare', icon: 'fa fa-star-o' },
                     ]
                 },
                 { id: 'utils-2.0', text: 'Features 2.0+', img: 'icon-folder', group: true, expanded: true, hidden: true,
                     nodes: [
-                        { id: 'utils/15', text: 'Better Tooltips', icon: 'fa fa-star-o' },
-                        { id: 'utils/21', text: 'Notifications', icon: 'fa fa-star-o' },
-                        { id: 'utils/11', text: 'International Compare', icon: 'fa fa-star-o' },
-                        { id: 'utils/12', text: 'Lock/Unlock Content', icon: 'fa fa-star-o' },
-                        { id: 'utils/13', text: 'Context Messages', icon: 'fa fa-star-o' },
-                        { id: 'utils/14', text: 'mQuery', icon: 'fa fa-star-o' },
-                        { id: 'utils/16', text: 'String Utils', icon: 'fa fa-star-o' },
-                        { id: 'utils/17', text: 'Localization', icon: 'fa fa-star-o' },
-                        { id: 'utils/18', text: 'Escape/Unescape ID', icon: 'fa fa-star-o' },
-                        { id: 'utils/19', text: 'Clone & Extend', icon: 'fa fa-star-o' },
-                        { id: 'utils/20', text: 'Event Binding', icon: 'fa fa-star-o' },
+                        { id: 'utils/8', text: 'Notifications', icon: 'fa fa-star-o' },
+                        { id: 'utils/9', text: 'International Compare', icon: 'fa fa-star-o' },
+                        { id: 'utils/10', text: 'Lock/Unlock Content', icon: 'fa fa-star-o' },
+                        { id: 'utils/11', text: 'Context Messages', icon: 'fa fa-star-o' },
+                        { id: 'utils/12', text: 'mQuery', icon: 'fa fa-star-o' },
+                        { id: 'utils/13', text: 'String Utils', icon: 'fa fa-star-o' },
+                        { id: 'utils/14', text: 'Localization', icon: 'fa fa-star-o' },
+                        { id: 'utils/15', text: 'Escape/Unescape ID', icon: 'fa fa-star-o' },
+                        { id: 'utils/16', text: 'Clone & Extend', icon: 'fa fa-star-o' },
+                        { id: 'utils/17', text: 'Event Binding', icon: 'fa fa-star-o' },
                     ]
                 },
             ],

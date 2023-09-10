@@ -133,7 +133,7 @@ class Dialog extends w2base {
                 let handler = options.actions[action]
                 let btnAction = action
                 if (typeof handler == 'function') {
-                    options.buttons += `<button class="w2ui-btn w2ui-eaction" data-click='["action","${action}","event"]'>${action}</button>`
+                    options.buttons += `<button class="w2ui-btn w2ui-eaction" name="${action}" data-click='["action","${action}","event"]'>${action}</button>`
                 }
                 if (typeof handler == 'object') {
                     options.buttons += `<button class="w2ui-btn w2ui-eaction ${handler.class || ''}" name="${action}" data-click='["action","${action}","event"]'
@@ -141,7 +141,7 @@ class Dialog extends w2base {
                     btnAction = Array.isArray(options.actions) ? handler.text : action
                 }
                 if (typeof handler == 'string') {
-                    options.buttons += `<button class="w2ui-btn w2ui-eaction" data-click='["action","${handler}","event"]'>${handler}</button>`
+                    options.buttons += `<button class="w2ui-btn w2ui-eaction" name="${action}" data-click='["action","${action}","event"]'>${handler}</button>`
                     btnAction = handler
                 }
                 if (typeof btnAction == 'string') {
@@ -157,6 +157,18 @@ class Dialog extends w2base {
             })
         }
         // check if message is already displayed
+        let titleBtns = ''
+        if (options.showClose) {
+            titleBtns += `<div class="w2ui-popup-button w2ui-popup-close">
+                        <span class="w2ui-icon w2ui-icon-cross w2ui-eaction" data-mousedown="stop" data-click="close"></span>
+                    </div>`
+        }
+        if (options.showMax) {
+            titleBtns += `<div class="w2ui-popup-button w2ui-popup-max">
+                        <span class="w2ui-icon w2ui-icon-box w2ui-eaction" data-mousedown="stop" data-click="toggle"></span>
+                    </div>`
+        }
+
         if (query('#w2ui-popup').length === 0) {
             // trigger event
             edata = this.trigger('open', { target: 'popup', present: false })
@@ -167,17 +179,6 @@ class Dialog extends w2base {
                 opacity: 0.3,
                 onClick: options.modal ? null : () => { this.close() }
             })
-            let btn = ''
-            if (options.showClose) {
-                btn += `<div class="w2ui-popup-button w2ui-popup-close">
-                            <span class="w2ui-icon w2ui-icon-cross w2ui-eaction" data-mousedown="stop" data-click="close"></span>
-                        </div>`
-            }
-            if (options.showMax) {
-                btn += `<div class="w2ui-popup-button w2ui-popup-max">
-                            <span class="w2ui-icon w2ui-icon-box w2ui-eaction" data-mousedown="stop" data-click="toggle"></span>
-                        </div>`
-            }
             // first insert just body
             let styles = `
                 left: ${left}px;
@@ -199,7 +200,8 @@ class Dialog extends w2base {
             styles = `${!options.title ? 'top: 0px !important;' : ''} ${!options.buttons ? 'bottom: 0px !important;' : ''}`
             msg = `
                 <span name="hidden-first" tabindex="0" style="position: absolute; top: -100px"></span>
-                <div class="w2ui-popup-title" style="${!options.title ? 'display: none' : ''}">${btn}</div>
+                <div class="w2ui-popup-title-btns">${titleBtns}</div>
+                <div class="w2ui-popup-title" style="${!options.title ? 'display: none' : ''}"></div>
                 <div class="w2ui-box" style="${styles}">
                     <div class="w2ui-popup-body ${!options.title || ' w2ui-popup-no-title'}
                         ${!options.buttons || ' w2ui-popup-no-buttons'}" style="${options.style}">
@@ -264,23 +266,21 @@ class Dialog extends w2base {
             if (options.title) {
                 query('#w2ui-popup .w2ui-popup-title')
                     .show()
-                    .html((options.showClose
-                        ? `<div class="w2ui-popup-button w2ui-popup-close">
-                                <span class="w2ui-icon w2ui-icon-cross w2ui-eaction" data-mousedown="stop" data-click="close"></span>
-                            </div>`
-                        : '') +
-                        (options.showMax
-                        ? `<div class="w2ui-popup-button w2ui-popup-max">
-                                <span class="w2ui-icon w2ui-icon-box w2ui-eaction" data-mousedown="stop" data-click="toggle"></span>
-                            </div>`
-                        : ''))
-                    .append(options.title)
-                query('#w2ui-popup .w2ui-popup-body').removeClass('w2ui-popup-no-title')
-                query('#w2ui-popup .w2ui-box, #w2ui-popup .w2ui-box-temp').css('top', '')
+                    .html(w2utils.lang(options.title))
+                    query('#w2ui-popup .w2ui-popup-body').removeClass('w2ui-popup-no-title')
+                    query('#w2ui-popup .w2ui-box, #w2ui-popup .w2ui-box-temp').css('top', '')
             } else {
                 query('#w2ui-popup .w2ui-popup-title').hide().html('')
                 query('#w2ui-popup .w2ui-popup-body').addClass('w2ui-popup-no-title')
                 query('#w2ui-popup .w2ui-box, #w2ui-popup .w2ui-box-temp').css('top', '0px')
+            }
+            if (titleBtns) {
+                query('#w2ui-popup .w2ui-popup-title-btns')
+                    .show()
+                    .html(titleBtns)
+            } else {
+                query('#w2ui-popup .w2ui-popup-title-btns')
+                    .hide()
             }
             // transition
             let div_old = query('#w2ui-popup .w2ui-box')[0]
@@ -313,9 +313,11 @@ class Dialog extends w2base {
         options._last_focus = document.activeElement
         // keyboard events
         if (options.keyboard) {
-            query(document.body).on('keydown', (event) => {
-                this.keydown(event)
-            })
+            query(document.body)
+                .off('.w2popup')
+                .on('keydown.w2popup', (event) => {
+                    this.keydown(event)
+                })
         }
         query(window).on('resize', this.handleResize)
         // initialize move
@@ -717,7 +719,7 @@ function w2alert(msg, title, callBack) {
         title: w2utils.lang(title ?? 'Notification'),
         body: `<div class="w2ui-centered w2ui-msg-text">${msg}</div>`,
         showClose: false,
-        actions: ['Ok'],
+        actions: { ok: 'Ok' },
         cancelAction: 'ok'
     }
     if (query('#w2ui-popup').length > 0 && w2popup.status != 'closing') {
@@ -725,7 +727,7 @@ function w2alert(msg, title, callBack) {
     } else {
         prom = w2popup.open(options)
     }
-    prom.ok((event) => {
+    prom.ok(event => {
         if (typeof event.detail.self?.close == 'function') {
             event.detail.self.close()
         }
@@ -744,12 +746,19 @@ function w2confirm(msg, title, callBack) {
         options.body = `<div class="w2ui-centered w2ui-msg-text">${options.msg}</div>`,
         delete options.msg
     }
+    if (typeof title == 'function' && callBack == null) {
+        callBack = title
+        title = undefined
+    }
     w2utils.extend(options, {
-        title: w2utils.lang(title ?? 'Confirmation'),
+        title: w2utils.lang(title ?? options.title ?? 'Confirmation'),
         showClose: false,
         modal: true,
         cancelAction: 'no'
     })
+    if (callBack == null && options.callBack != null) {
+        callBack = options.callBack
+    }
     w2utils.normButtons(options, { yes: 'Yes', no: 'No' })
     if (query('#w2ui-popup').length > 0 && w2popup.status != 'closing') {
         prom = w2popup.message(options)
@@ -789,7 +798,7 @@ function w2prompt(label, title, callBack) {
         )
     }
     w2utils.extend(options, {
-        title: w2utils.lang(title ?? 'Notification'),
+        title: w2utils.lang(title ?? options.title ?? 'Notification'),
         showClose: false,
         modal: true,
         cancelAction: 'cancel'
@@ -823,7 +832,7 @@ function w2prompt(label, title, callBack) {
                 change(evt) {
                     let edata = prom.self.trigger('change', { target: 'prompt', originalEvent: evt })
                     if (edata.isCancelled === true) return
-                    if (evt.keyCode == 13 && evt.ctrlKey) {
+                    if (evt.keyCode == 13 && (evt.ctrlKey || evt.metaKey || evt.target.tagName != 'TEXTAREA')) {
                         prom.self.action('Ok', evt)
                     }
                     if (evt.keyCode == 27) {

@@ -1,0 +1,69 @@
+<div class="content">
+    <div id="example_title">
+        <h1>Menu Icons & Badges</h1>
+        Each item of the menu can have an icon and various badges, such as count, hotkey, or help icon. Or it can be removable.
+    </div>
+    <div id="example_view"></div>
+    <div id="example_code"></div>
+</div>
+
+<!--CODE-->
+<style>
+    .custom {
+        font-size: 16px;
+        padding: 10px;
+        background-color: #fcfcfc;
+        width: 600px;
+        color: #484848;
+    }
+    .tooltip {
+        display: inline-block;
+        padding: 3px 6px;
+        background-color: #f1f4dc;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+</style>
+
+<div style="height: 10px"></div>
+
+<button id="custom-btn" class="w2ui-btn">Click Me to Show Menu</button>
+
+<div style="height: 20px"></div>
+
+<!--CODE-->
+<script type="module">
+import { query, w2menu, w2utils } from '__W2UI_PATH__'
+
+let people = [
+    'George Washington', 'John Adams', 'Thomas Jefferson', 'James Buchanan', 'James Madison',
+    'Abraham Lincoln', 'James Monroe', 'Andrew Johnson', 'John Adams'
+]
+w2utils.normMenu(people) // convert to objects
+people.forEach(person => person.icon = 'fa fa-user') // add icon
+
+people[0].help = 'First President'
+people[1].help = 'Second President'
+people[2].help = 'Third President'
+people[3].count = 4
+people[4].count = 5
+people[5].removable = true
+people[6].removable = true
+people[7].removable = true
+people[8].removable = true
+
+query('#custom-btn').on('click', event => {
+    w2menu.show({
+        name: 'custom-menu',
+        anchor: event.target,
+        match: 'contains',
+        altRows: true,
+        items: people
+    })
+    .select(event => {
+        let anchor = event.detail.overlay.anchor
+        query(anchor).html('Selected: ' + event.detail.item.text)
+    })
+})
+
+</script>

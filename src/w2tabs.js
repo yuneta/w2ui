@@ -268,7 +268,7 @@ class w2tabs extends w2base {
     mouseAction(action, id, event) {
         let tab = this.get(id)
         let edata = this.trigger('mouse' + action, { target: id, tab, object: tab, originalEvent: event })
-        if (edata.isCancelled === true || tab.disabled || tab.hidden) return
+        if (edata.isCancelled === true || tab?.disabled || tab?.hidden) return
         switch (action) {
             case 'Enter':
                 this.tooltipShow(id)
@@ -286,14 +286,14 @@ class w2tabs extends w2base {
     }
 
     tooltipShow(id) {
-        let item = this.get(id)
+        let tab = this.get(id)
         let el = query(this.box).find('#tabs_'+ this.name + '_tab_'+ w2utils.escapeId(id)).get(0)
-        if (this.tooltip == null || item.disabled || this.last.reordering) {
+        if (this.tooltip == null || tab?.disabled || this.last.reordering) {
             return
         }
         let pos = this.tooltip
-        let txt = item.tooltip
-        if (typeof txt == 'function') txt = txt.call(this, item)
+        let txt = tab?.tooltip
+        if (typeof txt == 'function') txt = txt.call(this, tab)
         w2tooltip.show({
             anchor: el,
             name: this.name + '_tooltip',
@@ -391,13 +391,7 @@ class w2tabs extends w2base {
         if (edata.isCancelled === true) return
         // default action
         if (box != null) {
-            // clean previous box
-            if (query(this.box).find('#tabs_'+ this.name + '_right').length > 0) {
-                query(this.box)
-                    .removeAttr('name')
-                    .removeClass('w2ui-reset w2ui-tabs')
-                    .html('')
-            }
+            this.unmount() // clean previous control
             this.box = box
         }
         if (!this.box) return false
@@ -535,19 +529,21 @@ class w2tabs extends w2base {
         if (edata.isCancelled === true) return
 
         // show hide overflow buttons
-        let box = query(this.box)
-        box.find('.w2ui-scroll-left, .w2ui-scroll-right').hide()
-        let scrollBox  = box.find('.w2ui-scroll-wrapper').get(0)
-        let $right     = box.find('.w2ui-tabs-right')
-        let boxWidth   = box.get(0).getBoundingClientRect().width
-        let itemsWidth = ($right.length > 0 ? $right[0].offsetLeft + $right[0].clientWidth : 0)
-        if (boxWidth < itemsWidth) {
-            // we have overflown content
-            if (scrollBox.scrollLeft > 0) {
-                box.find('.w2ui-scroll-left').show()
-            }
-            if (boxWidth < itemsWidth - scrollBox.scrollLeft) {
-                box.find('.w2ui-scroll-right').show()
+        if (this.box != null) {
+            let box = query(this.box)
+            box.find('.w2ui-scroll-left, .w2ui-scroll-right').hide()
+            let scrollBox  = box.find('.w2ui-scroll-wrapper').get(0)
+            let $right     = box.find('.w2ui-tabs-right')
+            let boxWidth   = box.get(0).getBoundingClientRect().width
+            let itemsWidth = ($right.length > 0 ? $right[0].offsetLeft + $right[0].clientWidth : 0)
+            if (boxWidth < itemsWidth) {
+                // we have overflown content
+                if (scrollBox.scrollLeft > 0) {
+                    box.find('.w2ui-scroll-left').show()
+                }
+                if (boxWidth < itemsWidth - scrollBox.scrollLeft) {
+                    box.find('.w2ui-scroll-right').show()
+                }
             }
         }
         // event after
@@ -561,15 +557,16 @@ class w2tabs extends w2base {
         if (edata.isCancelled === true) return
         // clean up
         if (query(this.box).find('#tabs_'+ this.name + '_right').length > 0) {
-            query(this.box)
-                .removeAttr('name')
-                .removeClass('w2ui-reset w2ui-tabs')
-                .html('')
+            this.unmount()
         }
-        this.last.observeResize?.disconnect()
         delete w2ui[this.name]
         // event after
         edata.finish()
+    }
+
+    unmount() {
+        super.unmount()
+        this.last.observeResize?.disconnect()
     }
 
     // ===================================================
@@ -645,7 +642,7 @@ class w2tabs extends w2base {
                 // first insert tab on the right to get its proper dimentions
                 query(this.box).find('#tabs_tabs_right').before($tab.get(0))
                 let $tmp  = query(this.box).find('#' + $tab.attr('id'))
-                let width = $tmp.get(0).clientWidth ?? 0
+                let width = $tmp.get(0)?.clientWidth ?? 0
                 // insert animation div
                 let $anim = query.html('<div class="tab-animate-insert" style="flex-shrink: 0; width: 0; transition: width 0.25s"></div>')
                 $before.before($anim)

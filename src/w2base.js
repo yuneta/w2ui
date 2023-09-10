@@ -3,9 +3,13 @@
  *  - Dependencies: w2utils
  *  - on/off/trigger methods id not showing in help
  *  - refactored with event object
+ *
+ * Chanes in 2.0.+
+ * - added unmount that cleans up the box
+ *
  */
 
-import { w2ui, w2utils } from './w2utils.js'
+import { w2ui, w2utils, query } from './w2utils.js'
 
 class w2event {
     constructor(owner, edata) {
@@ -259,8 +263,45 @@ class w2base {
             if (this.debug) {
                 console.log(`w2base: trigger "${edata.type}:${edata.phase}"`, edata)
             }
+            // clean up activeEvents
+            let ind = this.activeEvents.indexOf(edata)
+            if (ind !== -1) this.activeEvents.splice(ind, 1)
         }
         return edata
+    }
+
+    /**
+     * This method renders component into the box. It is overwritten in descendents and in this base
+     * component it is empty.
+     */
+    render(box) {
+        // intentionally left blank
+    }
+
+    /**
+     * Removes all classes that start with w2ui-* and sets box to null. It is needed so that control will
+     * release the box to be used for other widgets
+     */
+    unmount() {
+        let edata = this.trigger('unmount', { target: this.name })
+        if (edata.isCancelled) {
+            return
+        }
+        let remove = []
+        // find classes that start with "w2ui-*"
+        if (this.box instanceof HTMLElement) {
+            this.box.classList.forEach(cl => {
+                if (cl.startsWith('w2ui-')) remove.push(cl)
+            })
+        }
+        query(this.box)
+            .off() // removes all events attached to this box previously
+            .removeClass(remove)
+            .removeAttr('name')
+            .html('')
+        this.box = null
+        // event after
+        edata.finish()
     }
 }
 export { w2event, w2base }

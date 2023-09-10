@@ -22,10 +22,11 @@
  *  - getValue(..., original) -- return original if any
  *  - added .hideErrors()
  *  - reuqest, save, submit - return promises
- *  - added prepareParams
  *  - this.recid = null if no record needs to be pulled
  *  - remove form.multiplart
  *  - this.method - for saving only
+ *  - added field.html.class
+ *  - setValue(..., noRefresh)
  */
 
 import { w2base } from './w2base.js'
@@ -87,6 +88,7 @@ class w2form extends w2base {
         this.onError      = null
         this.msgRefresh   = 'Loading...'
         this.msgSaving    = 'Saving...'
+        this.msgServerError = 'Server error'
         this.ALL_TYPES    = [ 'text', 'textarea', 'email', 'pass', 'password', 'int', 'float', 'money', 'currency',
             'percent', 'hex', 'alphanumeric', 'color', 'date', 'time', 'datetime', 'toggle', 'checkbox', 'radio',
             'check', 'checks', 'list', 'combo', 'enum', 'file', 'select', 'map', 'array', 'div', 'custom', 'html',
@@ -317,7 +319,7 @@ class w2form extends w2base {
         }
     }
 
-    setValue(field, value) {
+    setValue(field, value, noRefresh) {
         // will not refresh the form!
         if (value === '' || value == null
                 || (Array.isArray(value) && value.length === 0)
@@ -334,12 +336,14 @@ class w2form extends w2base {
                         rec[fld] = value
                     }
                 })
+                if (!noRefresh) this.setFieldValue(field, value)
                 return true
             } catch (event) {
                 return false
             }
         } else {
             this.record[field] = value
+            if (!noRefresh) this.setFieldValue(field, value)
             return true
         }
     }
@@ -357,7 +361,10 @@ class w2form extends w2base {
 
         // clean extra chars
         if (['int', 'float', 'percent', 'money', 'currency'].includes(field.type)) {
-            current = field.w2field.clean(current)
+            // for float values allow "0." input as valid, otherwise it is nto possible to enter .
+            if (field.type == 'int' || current[current.length -1] != '.') {
+                current = field.w2field.clean(current)
+            }
         }
         // radio list
         if (['radio'].includes(field.type)) {
@@ -470,7 +477,7 @@ class w2form extends w2base {
                 }
                 // if item is found in field.options, update it in the this.records
                 if (item != value) {
-                    this.setValue(field.name, item)
+                    this.setValue(field.name, item, true)
                 }
                 if (field.type == 'list') {
                     field.w2field.selected = item
@@ -498,7 +505,7 @@ class w2form extends w2base {
                     }
                 })
                 if (updated) {
-                    this.setValue(field.name, items)
+                    this.setValue(field.name, items, true)
                 }
                 field.w2field.selected = items
                 field.w2field.refresh()
@@ -508,11 +515,11 @@ class w2form extends w2base {
             case 'array': {
                 // init map
                 if (field.type == 'map' && (value == null || !w2utils.isPlainObject(value))) {
-                    this.setValue(field.field, {})
+                    this.setValue(field.field, {}, true)
                     value = this.getValue(field.field)
                 }
                 if (field.type == 'array' && (value == null || !Array.isArray(value))) {
-                    this.setValue(field.field, [])
+                    this.setValue(field.field, [], true)
                     value = this.getValue(field.field)
                 }
                 let container = query(field.el).parent().find('.w2ui-map-container')
@@ -885,47 +892,6 @@ class w2form extends w2base {
         return data
     }
 
-    prepareParams(url, fetchOptions) {
-        let dataType = this.dataType ?? w2utils.settings.dataType
-        let postParams = fetchOptions.body
-        switch (dataType) {
-            case 'HTTPJSON':
-                postParams = { request: postParams }
-                body2params()
-                break
-            case 'HTTP':
-                body2params()
-                break
-            case 'RESTFULL':
-                if (fetchOptions.method == 'POST') {
-                    fetchOptions.headers['Content-Type'] = 'application/json'
-                } else {
-                    body2params()
-                }
-                break
-            case 'JSON':
-                if (fetchOptions.method == 'GET') {
-                    postParams = { request: postParams }
-                    body2params()
-                } else {
-                    fetchOptions.headers['Content-Type'] = 'application/json'
-                    fetchOptions.method = 'POST'
-                }
-                break
-        }
-        fetchOptions.body = typeof fetchOptions.body == 'string' ? fetchOptions.body : JSON.stringify(fetchOptions.body)
-        return fetchOptions
-
-        function body2params() {
-            Object.keys(postParams).forEach(key => {
-                let param = postParams[key]
-                if (typeof param == 'object') param = JSON.stringify(param)
-                url.searchParams.append(key, param)
-            })
-            delete fetchOptions.body
-        }
-    }
-
     request(postData, callBack) { // if (1) param then it is call back if (2) then postData and callBack
         let self = this
         let resolve, reject
@@ -969,11 +935,11 @@ class w2form extends w2base {
             }
         }
         url = new URL(url, location)
-        let fetchOptions = this.prepareParams(url, {
+        let fetchOptions = w2utils.prepareParams(url, {
             method: edata.detail.httpMethod,
             headers: edata.detail.httpHeaders,
             body: edata.detail.postData
-        })
+        }, this.dataType)
         this.last.fetchCtrl = new AbortController()
         fetchOptions.signal = this.last.fetchCtrl.signal
         this.last.fetchOptions = fetchOptions
@@ -993,18 +959,20 @@ class w2form extends w2base {
                             target: self.name,
                             fetchCtrl: this.last.fetchCtrl,
                             fetchOptions: this.last.fetchOptions,
-                            data: resp
+                            data
                         })
                         if (edata.isCancelled === true) return
+                        // for backward compatibility
+                        if (data.error == null && data.status === 'error') {
+                            data.error = true
+                        }
+                        // if data.record is not present, then assume that entire response is the record
                         if (!data.record) {
-                            data = {
-                                error: false,
-                                record: data
-                            }
+                            Object.assign(data, { record: w2utils.clone(data) })
                         }
                         // server response error, not due to network issues
                         if (data.error === true) {
-                            self.error(w2utils.lang(data.message))
+                            self.error(w2utils.lang(data.message ?? this.msgServerError))
                         } else {
                             self.record = w2utils.clone(data.record)
                         }
@@ -1098,11 +1066,11 @@ class w2form extends w2base {
             }
         }
         url = new URL(url, location)
-        let fetchOptions = this.prepareParams(url, {
+        let fetchOptions = w2utils.prepareParams(url, {
             method: edata.detail.httpMethod,
             headers: edata.detail.httpHeaders,
             body: edata.detail.postData
-        })
+        }, this.dataType)
         this.last.fetchCtrl = new AbortController()
         fetchOptions.signal = this.last.fetchCtrl.signal
         this.last.fetchOptions = fetchOptions
@@ -1128,7 +1096,7 @@ class w2form extends w2base {
                         if (edata.isCancelled === true) return
                         // server error, not due to network issues
                         if (data.error === true) {
-                            self.error(w2utils.lang(data.message))
+                            self.error(w2utils.lang(data.message ?? this.msgServerError))
                         } else {
                             self.original = null
                         }
@@ -1235,7 +1203,7 @@ class w2form extends w2base {
             if (page == null) page = field.html.page
             if (column == null) column = field.html.column
             // input control
-            let input = `<input id="${field.field}" name="${field.field}" class="w2ui-input" type="text" ${field.html.attr + tabindex_str}>`
+            let input = `<input id="${field.field}" name="${field.field}" class="w2ui-input ${field.html.class ?? ''}" type="text" ${field.html.attr + tabindex_str}>`
             switch (field.type) {
                 case 'pass':
                 case 'password':
@@ -1244,7 +1212,7 @@ class w2form extends w2base {
                 case 'checkbox': {
                     input = `
                         <label class="w2ui-box-label">
-                            <input id="${field.field}" name="${field.field}" class="w2ui-input" type="checkbox" ${field.html.attr + tabindex_str}>
+                            <input id="${field.field}" name="${field.field}" class="w2ui-input ${field.html.class ?? ''}" type="checkbox" ${field.html.attr + tabindex_str}>
                             <span>${field.html.label}</span>
                         </label>`
                     break
@@ -1263,7 +1231,7 @@ class w2form extends w2base {
                     for (let i = 0; i < items.length; i++) {
                         input += `
                             <label class="w2ui-box-label">
-                                <input id="${field.field + i}" name="${field.field}" class="w2ui-input" type="checkbox"
+                                <input id="${field.field + i}" name="${field.field}" class="w2ui-input ${field.html.class ?? ''}" type="checkbox"
                                     ${field.html.attr + tabindex_str} data-value="${items[i].id}" data-index="${i}">
                                 <span>&#160;${items[i].text}</span>
                             </label>
@@ -1284,7 +1252,7 @@ class w2form extends w2base {
                     for (let i = 0; i < items.length; i++) {
                         input += `
                             <label class="w2ui-box-label">
-                                <input id="${field.field + i}" name="${field.field}" class="w2ui-input" type="radio"
+                                <input id="${field.field + i}" name="${field.field}" class="w2ui-input ${field.html.class ?? ''}" type="radio"
                                     ${field.html.attr + (i === 0 ? tabindex_str : '')}
                                     data-value="${items[i].id}" data-index="${i}">
                                 <span>&#160;${items[i].text}</span>
@@ -1294,7 +1262,7 @@ class w2form extends w2base {
                     break
                 }
                 case 'select': {
-                    input = `<select id="${field.field}" name="${field.field}" class="w2ui-input" ${field.html.attr + tabindex_str}>`
+                    input = `<select id="${field.field}" name="${field.field}" class="w2ui-input ${field.html.class ?? ''}" ${field.html.attr + tabindex_str}>`
                     // normalized options
                     if (field.options.items == null && field.html.items != null) field.options.items = field.html.items
                     let items = field.options.items
@@ -1310,10 +1278,11 @@ class w2form extends w2base {
                     break
                 }
                 case 'textarea':
-                    input = `<textarea id="${field.field}" name="${field.field}" class="w2ui-input" ${field.html.attr + tabindex_str}></textarea>`
+                    input = `<textarea id="${field.field}" name="${field.field}" class="w2ui-input ${field.html.class ?? ''}" ${field.html.attr + tabindex_str}></textarea>`
                     break
                 case 'toggle':
-                    input = `<input id="${field.field}" name="${field.field}" class="w2ui-input w2ui-toggle" type="checkbox" ${field.html.attr + tabindex_str}>
+                    input = `<input id="${field.field}" name="${field.field}" class="w2ui-input w2ui-toggle  ${field.html.class ?? ''}"
+                                type="checkbox" ${field.html.attr + tabindex_str}>
                             <div><div></div></div>`
                     break
                 case 'map':
@@ -1327,7 +1296,7 @@ class w2form extends w2base {
                     break
                 case 'div':
                 case 'custom':
-                    input = '<div id="'+ field.field +'" name="'+ field.field +'" '+ field.html.attr + tabindex_str + ' class="w2ui-input">'+
+                    input = `<div id="${field.field}" name="${field.field}" ${field.html.attr + tabindex_str} class="w2ui-input ${field.html.class ?? ''}">`+
                                 (field && field.html && field.html.html ? field.html.html : '') +
                             '</div>'
                     break
@@ -1479,48 +1448,50 @@ class w2form extends w2base {
         let edata = this.trigger('resize', { target: this.name })
         if (edata.isCancelled === true) return
         // default behaviour
-        let header  = query(this.box).find(':scope > div .w2ui-form-header')
-        let toolbar = query(this.box).find(':scope > div .w2ui-form-toolbar')
-        let tabs    = query(this.box).find(':scope > div .w2ui-form-tabs')
-        let page    = query(this.box).find(':scope > div .w2ui-page')
-        let dpage   = query(this.box).find(':scope > div .w2ui-page.page-'+ this.page + ' > div')
-        let buttons = query(this.box).find(':scope > div .w2ui-buttons')
-        // if no height, calculate it
-        let { headerHeight, tbHeight, tabsHeight } = resizeElements()
-        if (this.autosize) { // we don't need autosize every time
-            let cHeight = query(this.box).get(0).clientHeight
-            if (cHeight === 0 || query(this.box).data('autosize') == 'yes') {
-                query(this.box).css({
-                    height: headerHeight + tbHeight + tabsHeight + 15 // 15 is extra height
-                        + (page.length > 0 ? w2utils.getSize(dpage, 'height') : 0)
-                        + (buttons.length > 0 ? w2utils.getSize(buttons, 'height') : 0)
-                        + 'px'
-                })
-                query(this.box).data('autosize', 'yes')
+        if (this.box != null) {
+            let header  = query(this.box).find(':scope > div .w2ui-form-header')
+            let toolbar = query(this.box).find(':scope > div .w2ui-form-toolbar')
+            let tabs    = query(this.box).find(':scope > div .w2ui-form-tabs')
+            let page    = query(this.box).find(':scope > div .w2ui-page')
+            let dpage   = query(this.box).find(':scope > div .w2ui-page.page-'+ this.page + ' > div')
+            let buttons = query(this.box).find(':scope > div .w2ui-buttons')
+            // if no height, calculate it
+            let { headerHeight, tbHeight, tabsHeight } = resizeElements()
+            if (this.autosize) { // we don't need autosize every time
+                let cHeight = query(this.box).get(0).clientHeight
+                if (cHeight === 0 || query(this.box).data('autosize') == 'yes') {
+                    query(this.box).css({
+                        height: headerHeight + tbHeight + tabsHeight + 15 // 15 is extra height
+                            + (page.length > 0 ? w2utils.getSize(dpage, 'height') : 0)
+                            + (buttons.length > 0 ? w2utils.getSize(buttons, 'height') : 0)
+                            + 'px'
+                    })
+                    query(this.box).data('autosize', 'yes')
+                }
+                resizeElements()
             }
-            resizeElements()
+
+            function resizeElements() {
+                let headerHeight = (self.header !== '' ? w2utils.getSize(header, 'height') : 0)
+                let tbHeight = (Array.isArray(self.toolbar?.items) && self.toolbar?.items?.length > 0)
+                    ? w2utils.getSize(toolbar, 'height')
+                    : 0
+                let tabsHeight = (Array.isArray(self.tabs?.tabs) && self.tabs?.tabs?.length > 0)
+                    ? w2utils.getSize(tabs, 'height')
+                    : 0
+                // resize elements
+                toolbar.css({ top: headerHeight + 'px' })
+                tabs.css({ top: headerHeight + tbHeight + 'px' })
+                page.css({
+                    top: headerHeight + tbHeight + tabsHeight + 'px',
+                    bottom: (buttons.length > 0 ? w2utils.getSize(buttons, 'height') : 0) + 'px'
+                })
+                // return some params
+                return { headerHeight, tbHeight, tabsHeight }
+            }
         }
         // event after
         edata.finish()
-
-        function resizeElements() {
-            let headerHeight = (self.header !== '' ? w2utils.getSize(header, 'height') : 0)
-            let tbHeight = (Array.isArray(self.toolbar?.items) && self.toolbar?.items?.length > 0)
-                ? w2utils.getSize(toolbar, 'height')
-                : 0
-            let tabsHeight = (Array.isArray(self.tabs?.tabs) && self.tabs?.tabs?.length > 0)
-                ? w2utils.getSize(tabs, 'height')
-                : 0
-            // resize elements
-            toolbar.css({ top: headerHeight + 'px' })
-            tabs.css({ top: headerHeight + tbHeight + 'px' })
-            page.css({
-                top: headerHeight + tbHeight + tabsHeight + 'px',
-                bottom: (buttons.length > 0 ? w2utils.getSize(buttons, 'height') : 0) + 'px'
-            })
-            // return some params
-            return { headerHeight, tbHeight, tabsHeight }
-        }
     }
 
     refresh() {
@@ -1624,7 +1595,7 @@ class w2form extends w2base {
                         this._previous = value.previous
                     }
                     // event before
-                    let edata2 = self.trigger('input', { target: self.name, value, originalEvent: event })
+                    let edata2 = self.trigger('input', { target: self.name, field, value, originalEvent: event })
                     if (edata2.isCancelled === true) return
                     // default action
                     self.setValue(this.name, value.current)
@@ -1715,12 +1686,12 @@ class w2form extends w2base {
                         let html = `
                             <div class="w2ui-map-field" style="margin-bottom: 5px" data-index="${cnt}">
                             ${field.type == 'map'
-                                ? `<input type="text" ${field.html.key.attr + attr} class="w2ui-input w2ui-map key">
+                                ? `<input type="text" ${(field.html.key.attr ?? '') + attr} class="w2ui-input ${field.html.class ?? ''} w2ui-map key">
                                     ${field.html.key.text || ''}
                                 `
                                 : ''
                             }
-                            <input type="text" ${field.html.value.attr + attr} class="w2ui-input w2ui-map value">
+                            <input type="text" ${(field.html.value.attr ?? '') + attr} class="w2ui-input ${field.html.class ?? ''} w2ui-map value">
                                 ${field.html.value.text || ''}
                             </div>`
                         div.append(html)
@@ -1868,7 +1839,6 @@ class w2form extends w2base {
             }
             // set value to HTML input field
             this.setFieldValue(field.field, this.getValue(field.name))
-            field.$el.trigger('change')
         }
         // event after
         edata.finish()
@@ -1885,12 +1855,7 @@ class w2form extends w2base {
         if (edata.isCancelled === true) return
         // default action
         if (box != null) {
-            // clean previous box
-            if (query(this.box).find('#form_'+ this.name +'_form').length > 0) {
-                query(this.box).removeAttr('name')
-                    .removeClass('w2ui-reset w2ui-form')
-                    .html('')
-            }
+            this.unmount() // clean previous control
             this.box = box
         }
         if (!this.isGenerated && !this.formHTML) return
@@ -1961,6 +1926,29 @@ class w2form extends w2base {
         return Date.now() - time
     }
 
+    unmount() {
+        super.unmount()
+        this.tabs?.unmount?.()
+        this.toolbar?.unmount?.()
+        this.last.observeResize?.disconnect()
+    }
+
+    destroy() {
+        // event before
+        let edata = this.trigger('destroy', { target: this.name })
+        if (edata.isCancelled === true) return
+        // clean up
+        this.tabs?.destroy?.()
+        this.toolbar?.destroy?.()
+        if (query(this.box).find('#form_'+ this.name +'_tabs').length > 0) {
+            this.unmount()
+        }
+        this.last.observeResize?.disconnect()
+        delete w2ui[this.name]
+        // event after
+        edata.finish()
+    }
+
     setFocus(focus) {
         if (typeof focus === 'undefined'){
             // no argument - use form's focus property
@@ -1990,25 +1978,6 @@ class w2form extends w2base {
             $input.get(0).focus()
         }
         return $input
-    }
-
-    destroy() {
-        // event before
-        let edata = this.trigger('destroy', { target: this.name })
-        if (edata.isCancelled === true) return
-        // clean up
-        if (typeof this.toolbar === 'object' && this.toolbar.destroy) this.toolbar.destroy()
-        if (typeof this.tabs === 'object' && this.tabs.destroy) this.tabs.destroy()
-        if (query(this.box).find('#form_'+ this.name +'_tabs').length > 0) {
-            query(this.box)
-                .removeAttr('name')
-                .removeClass('w2ui-reset w2ui-form')
-                .html('')
-        }
-        this.last.observeResize?.disconnect()
-        delete w2ui[this.name]
-        // event after
-        edata.finish()
     }
 }
 export { w2form }

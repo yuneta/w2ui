@@ -18,6 +18,7 @@
  *  - implemented marker
  *  - cssPrefix - deprecated
  *  - w2utils.debounce
+ *  - w2utils.prepareParams
  */
 
 import { w2base } from './w2base.js'
@@ -463,9 +464,9 @@ class Utils {
     formatNumber(val, fraction, useGrouping) {
         if (val == null || val === '' || typeof val === 'object') return ''
         let options = {
-            minimumFractionDigits : fraction,
-            maximumFractionDigits : fraction,
-            useGrouping : useGrouping
+            minimumFractionDigits: parseInt(fraction),
+            maximumFractionDigits: parseInt(fraction),
+            useGrouping: !!useGrouping
         }
         if (fraction == null || fraction < 0) {
             options.minimumFractionDigits = 0
@@ -509,11 +510,12 @@ class Utils {
         if (this.isInt(dateStr)) dt = new Date(Number(dateStr)) // for unix timestamps
         if (this.isTime(dateStr)) {
             let tmp = this.isTime(dateStr, true)
-            dt      = new Date()
+            dt = new Date()
             dt.setHours(tmp.hours)
             dt.setMinutes(tmp.minutes)
         }
         if (String(dt) === 'Invalid Date') return ''
+        if (format == 'h12') format = 'hh:mi pm'
 
         let type = 'am'
         let hour = dt.getHours()
@@ -688,107 +690,13 @@ class Utils {
     }
 
     base64encode(input) {
-        let output = ''
-        let chr1, chr2, chr3, enc1, enc2, enc3, enc4
-        let i      = 0
-        let keyStr = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='
-        input      = utf8_encode(input)
-
-        while (i < input.length) {
-            chr1 = input.charCodeAt(i++)
-            chr2 = input.charCodeAt(i++)
-            chr3 = input.charCodeAt(i++)
-            enc1 = chr1 >> 2
-            enc2 = ((chr1 & 3) << 4) | (chr2 >> 4)
-            enc3 = ((chr2 & 15) << 2) | (chr3 >> 6)
-            enc4 = chr3 & 63
-            if (isNaN(chr2)) {
-                enc3 = enc4 = 64
-            } else if (isNaN(chr3)) {
-                enc4 = 64
-            }
-            output = output + keyStr.charAt(enc1) + keyStr.charAt(enc2) + keyStr.charAt(enc3) + keyStr.charAt(enc4)
-        }
-
-        function utf8_encode (string) {
-            string      = String(string).replace(/\r\n/g,'\n')
-            let utftext = ''
-
-            for (let n = 0; n < string.length; n++) {
-                let c = string.charCodeAt(n)
-                if (c < 128) {
-                    utftext += String.fromCharCode(c)
-                }
-                else if ((c > 127) && (c < 2048)) {
-                    utftext += String.fromCharCode((c >> 6) | 192)
-                    utftext += String.fromCharCode((c & 63) | 128)
-                }
-                else {
-                    utftext += String.fromCharCode((c >> 12) | 224)
-                    utftext += String.fromCharCode(((c >> 6) & 63) | 128)
-                    utftext += String.fromCharCode((c & 63) | 128)
-                }
-            }
-            return utftext
-        }
-
-        return output
+        // Fast Native support in Chrome since 2010
+        return btoa(input) // binary to ascii
     }
 
     base64decode(input) {
-        let output = ''
-        let chr1, chr2, chr3
-        let enc1, enc2, enc3, enc4
-        let i      = 0
-        let keyStr = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='
-        input      = input.replace(/[^A-Za-z0-9\+\/\=]/g, '')
-
-        while (i < input.length) {
-            enc1   = keyStr.indexOf(input.charAt(i++))
-            enc2   = keyStr.indexOf(input.charAt(i++))
-            enc3   = keyStr.indexOf(input.charAt(i++))
-            enc4   = keyStr.indexOf(input.charAt(i++))
-            chr1   = (enc1 << 2) | (enc2 >> 4)
-            chr2   = ((enc2 & 15) << 4) | (enc3 >> 2)
-            chr3   = ((enc3 & 3) << 6) | enc4
-            output = output + String.fromCharCode(chr1)
-            if (enc3 !== 64) {
-                output = output + String.fromCharCode(chr2)
-            }
-            if (enc4 !== 64) {
-                output = output + String.fromCharCode(chr3)
-            }
-        }
-        output = utf8_decode(output)
-
-        function utf8_decode(utftext) {
-            let string = ''
-            let i      = 0
-            let c      = 0, c2, c3
-
-            while ( i < utftext.length ) {
-                c = utftext.charCodeAt(i)
-                if (c < 128) {
-                    string += String.fromCharCode(c)
-                    i++
-                }
-                else if ((c > 191) && (c < 224)) {
-                    c2      = utftext.charCodeAt(i+1)
-                    string += String.fromCharCode(((c & 31) << 6) | (c2 & 63))
-                    i      += 2
-                }
-                else {
-                    c2      = utftext.charCodeAt(i+1)
-                    c3      = utftext.charCodeAt(i+2)
-                    string += String.fromCharCode(((c & 15) << 12) | ((c2 & 63) << 6) | (c3 & 63))
-                    i      += 3
-                }
-            }
-
-            return string
-        }
-
-        return output
+        // Fast Native support in Chrome since 2010
+        return atob(input) // ascii to binary
     }
 
     async sha256(str) {
@@ -987,8 +895,16 @@ class Utils {
         }
         if (!options.msg && options.msg !== 0) options.msg = ''
         this.unlock(box)
+        let el = query(box).get(0)
+        let pWidth = el.scrollWidth
+        let pHeight = el.scrollHeight
+        // if it is body and only has absolute elements, its height will be 0, need to lock entire window
+        if (el.tagName == 'BODY') {
+            if (pWidth < innerWidth) pWidth = innerWidth
+            if (pHeight < innerHeight) pHeight = innerHeight
+        }
         query(box).prepend(
-            '<div class="w2ui-lock"></div>'+
+            `<div class="w2ui-lock" style="height: ${pHeight}px; width: ${pWidth}px"></div>` +
             '<div class="w2ui-lock-msg"></div>'
         )
         let $lock = query(box).find('.w2ui-lock')
@@ -1178,7 +1094,8 @@ class Utils {
                         }
                     }
                 })
-            options.setFocus(options.focus)
+            // timeout is needed because messages opens over 0.3 seconds
+            setTimeout(() => options.setFocus(options.focus), 300)
         })
         options.off('.prom')
         let prom = {
@@ -1295,9 +1212,9 @@ class Utils {
                             ? `data-click='["message", "${where.param}"]`
                             : 'data-click="message"'
                         : ''}>
-                    <span name="hidden-first" tabindex="0" style="position: absolute; top: -100px"></span>
+                    <span name="hidden-first" tabindex="0" style="position: absolute; top: 0; outline: none"></span>
                     ${options.html}
-                    <span name="hidden-last" tabindex="0" style="position: absolute; top: -100px"></span>
+                    <span name="hidden-last" tabindex="0" style="position: absolute; top: 0; outline: none"></span>
                 </div>`
             if (query(where.after).length > 0) {
                 query(where.box).find(where.after).after(content)
@@ -1518,7 +1435,7 @@ class Utils {
             let action = options['btn_' + name]
             if (action) {
                 btn[name] = {
-                    text: w2utils.lang(action.text ?? ''),
+                    text: w2utils.lang(action.text ?? btn[name] ?? ''),
                     class: action.class ?? '',
                     style: action.style ?? '',
                     attrs: action.attrs ?? ''
@@ -1575,10 +1492,10 @@ class Utils {
         return ret
     }
 
-    getStrWidth(str, styles) {
+    getStrWidth(str, styles, raw) {
         query('body').append(`
             <div id="_tmp_width" style="position: absolute; top: -9000px; ${styles || ''}">
-                ${this.encodeTags(str)}
+                ${raw ? str : this.encodeTags(str)}
             </div>`)
         let width = query('#_tmp_width')[0].clientWidth
         query('#_tmp_width').remove()
@@ -1905,6 +1822,25 @@ class Utils {
         return color
     }
 
+    colorContrast(color1, color2) {
+        let lum1 = calcLumens(color1)
+        let lum2 = calcLumens(color2)
+        let ratio = (Math.max(lum1, lum2) + 0.05) / (Math.min(lum1, lum2) + 0.05)
+        return ratio.toFixed(2);
+
+        function calcLumens(color) {
+            let { r, g, b } = w2utils.parseColor(color) ?? { r: 0, g: 0, b: 0 }
+            let gamma = 2.2
+            let normR = r / 255
+            let normG = g / 255
+            let normB = b / 255
+            let sR = (normR <= 0.03928) ? normR / 12.92 : Math.pow((normR + 0.055) / 1.055, gamma)
+            let sG = (normG <= 0.03928) ? normG / 12.92 : Math.pow((normG + 0.055) / 1.055, gamma)
+            let sB = (normB <= 0.03928) ? normB / 12.92 : Math.pow((normB + 0.055) / 1.055, gamma)
+            return 0.2126 * sR + 0.7152 * sG + 0.0722 * sB
+        }
+    }
+
     // h=0..360, s=0..100, v=0..100
     hsv2rgb(h, s, v, a) {
         let r, g, b, i, f, p, q, t
@@ -2150,6 +2086,57 @@ class Utils {
             return w2utils.normMenu.call(this, newMenu)
         } else if (typeof menu === 'object') {
             return Object.keys(menu).map(key => { return { id: key, text: menu[key] } })
+        }
+    }
+
+    /**
+     * Takes Url object and fetchOptions and changes it in place applying selected user dataType. Since
+     * dataType is in w2utils. This method is used in grid, form and tooltip to prepare fetch parameters
+     */
+    prepareParams(url, fetchOptions, defDataType) {
+        let dataType = defDataType ?? w2utils.settings.dataType
+        let postParams = fetchOptions.body
+        switch (dataType) {
+            case 'HTTPJSON':
+                postParams = { request: postParams }
+                if (['PUT', 'DELETE'].includes(fetchOptions.method)) {
+                    fetchOptions.method = 'POST'
+                }
+                body2params()
+                break
+            case 'HTTP':
+                if (['PUT', 'DELETE'].includes(fetchOptions.method)) {
+                    fetchOptions.method = 'POST'
+                }
+                body2params()
+                break
+            case 'RESTFULL':
+                if (['PUT', 'DELETE'].includes(fetchOptions.method)) {
+                    fetchOptions.headers['Content-Type'] = 'application/json'
+                } else {
+                    body2params()
+                }
+                break
+            case 'JSON':
+                if (fetchOptions.method == 'GET') {
+                    postParams = { request: postParams }
+                    body2params()
+                } else {
+                    fetchOptions.headers['Content-Type'] = 'application/json'
+                    fetchOptions.method = 'POST'
+                }
+                break
+        }
+        fetchOptions.body = typeof fetchOptions.body == 'string' ? fetchOptions.body : JSON.stringify(fetchOptions.body)
+        return fetchOptions
+
+        function body2params() {
+            Object.keys(postParams).forEach(key => {
+                let param = postParams[key]
+                if (typeof param == 'object') param = JSON.stringify(param)
+                url.searchParams.append(key, param)
+            })
+            delete fetchOptions.body
         }
     }
 

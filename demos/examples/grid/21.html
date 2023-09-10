@@ -10,7 +10,7 @@
 </div>
 
 <!--CODE-->
-<div id="grid" style="width: 900px; height: 400px;"></div>
+<div id="grid" style="width: 1000px; height: 400px;"></div>
 <br>
 <label style="margin-left: 20px">
     <input type="checkbox" id="fixedsize" checked="checked" onclick="advanceOnEdit(this.checked)">
@@ -63,13 +63,13 @@ let grid = new w2grid({
         { field: 'time', text: 'time', size: '70px', sortable: true, resizable: true,
             editable: { type: 'time' }
         },
-        { field: 'list', text: 'list', size: '50%', sortable: true, resizable: true, hidden: true,
-            editable: { type: 'list', items: people, showAll: true },
-            render: function (record, extra) {
+        { field: 'list', text: 'list', size: '100px', sortable: true, resizable: true,
+            editable: { type: 'list', items: people, showAll: true, openOnFocus: true, align: 'left' },
+            render(record, extra) {
                 return extra.value?.text || '';
             }
         },
-        { field: 'combo', text: 'combo', size: '150px', sortable: true, resizable: true, hidden1: true,
+        { field: 'combo', text: 'combo', size: '150px', sortable: true, resizable: true,
             editable: { type: 'combo', items: people, filter: true }
         },
         { field: 'div', text: 'div', size: '50%', sortable: true, resizable: true,

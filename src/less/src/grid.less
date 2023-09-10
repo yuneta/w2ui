@@ -54,7 +54,7 @@
             position: relative;
             width: 300px;
             left: 0px;
-            top: -4px;
+            top: -3px;
 
             .w2ui-search-down {
                 position: absolute;
@@ -101,9 +101,8 @@
                 border: @grid-search-all-border !important;
                 color: @grid-search-all-color !important;
                 background-color: @grid-search-all-background-color;
-                padding: 1px 28px 0px 28px !important;
+                padding: 1px 28px 0px 24px !important;
                 margin: 0px !important;
-                margin-top: 1px !important;
                 font-size: 13px !important;
                 &:focus {
                     border: 1px solid #007cff !important;
@@ -118,7 +117,6 @@
                 height: 26px;
                 width: 26px;
                 font-size: 16px;
-                color: rgb(164, 173, 177);
                 cursor: pointer;
                 padding: 7px 2px 7px 2px;
                 border-radius: 4px;
@@ -127,12 +125,15 @@
                 span.w2ui-icon-drop {
                     position: relative;
                     top: -2px;
+                    color: #8d99a7;
                 }
 
                 &:hover,
                 &.checked {
-                    color: #fff;
                     background-color: #56a1e2;
+                    span.w2ui-icon-drop {
+                        color: #fff;
+                    }
                 }
             }
         }
@@ -152,6 +153,7 @@
                 white-space: nowrap;
             }
             > span {
+                min-width: 48px;
                 white-space: nowrap;
                 text-overflow: ellipsis;
                 overflow: hidden;
@@ -655,7 +657,6 @@
         padding: 3.5px 2px 2px 2px !important;
 
         input {
-            position: relative;
             top: -1px;
             border: 0 !important;
             border-radius: 0 !important;
@@ -682,11 +683,6 @@
             white-space: pre;
             overflow: hidden;
             .user-select(text);
-        }
-
-        input.w2ui-select {
-            outline: none !important;
-            background: #fff;
         }
     }
 

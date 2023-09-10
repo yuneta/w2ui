@@ -17,6 +17,13 @@
  *  - scroll returns promise
  *  - added onMouseEntter, onMouseLeave, onMouseDown, onMouseUp events
  *  - add(..., skipRefresh), insert(..., skipRefresh)
+ *  - item.items can be a function
+ *  - item.icon_style - style for the icon
+ *  - item.icon - can be a function
+ *  - item.type = 'label', item.type = 'input'
+ *  - item.placeholder
+ *  - item.spinner: { style, min, max, step, precision, suffix }
+ *  - item.backColor
  */
 
 import { w2base } from './w2base.js'
@@ -34,6 +41,7 @@ class w2toolbar extends w2base {
         this.right         = '' // HTML text on the right of toolbar
         this.tooltip       = 'top|left'// can be top, bottom, left, right
         this.onClick       = null
+        this.onChange      = null
         this.onMouseDown   = null
         this.onMouseUp     = null
         this.onMouseEnter  = null // mouse enter the button event
@@ -44,7 +52,7 @@ class w2toolbar extends w2base {
         this.onDestroy     = null
         this.item_template = {
             id: null, // command to be sent to all event handlers
-            type: 'button', // button, check, radio, drop, menu, menu-radio, menu-check, break, html, spacer
+            type: 'button', // button, check, radio, drop, menu, menu-radio, menu-check, break, html, label, input spacer
             text: null,
             html: '',
             tooltip: null,  // w2toolbar.tooltip should be
@@ -53,22 +61,47 @@ class w2toolbar extends w2base {
             disabled: false,
             checked: false, // used for radio buttons
             icon: null,
-            route: null,    // if not null, it is route to go
-            arrow: null,    // arrow down for drop/menu types
-            style: null,    // extra css style for caption
-            group: null,    // used for radio buttons
-            items: null,    // for type menu* it is an array of items in the menu
-            selected: null, // used for menu-check, menu-radio
-            color: null,    // color value - used in color pickers
-            overlay: {      // additional options for overlay
+            route: null,     // if not null, it is route to go
+            arrow: null,     // arrow down for drop/menu types
+            style: null,     // extra css style for caption
+            group: null,     // used for radio buttons
+            items: null,     // for type menu* it is an array of items in the menu
+            selected: null,  // used for menu-check, menu-radio
+            color: null,     // color value - used in color pickers
+            backColor: null, // background color value for color pickter
+            overlay: {       // additional options for overlay
                 anchorClass: ''
             },
             onClick: null,
             onRefresh: null
         }
         this.last = {
-            badge: {}
+            badge: {},
+            pendingRefresh: {} // what should be refreshed with a debounce
         }
+        /**
+         * This _refresh function is needed for speed. It will store what should be refreshed in this.last.refesh
+         * obect and then call _refreshDebounced(), which will do it withing 15 ms. However, if new items are added
+         * they will not cause multiple unnecessary refreshes
+         */
+        this._refresh = ({ effected, resize, refreshTooltip }) => {
+            let options = this.last.pendingRefresh
+            options.ids ??= []
+            options.ids.push(...effected)
+            Object.assign(options, { resize, refreshTooltip })
+            this._refreshDebounced()
+        }
+        this._refreshDebounced = w2utils.debounce(() => {
+            let options = this.last.pendingRefresh
+            // new Set will make array unique
+            new Set(options.ids).forEach(id => {
+                this.refresh(id)
+                if (options.hideTooltip) this.tooltipHide(id)
+            })
+            if (options.resize) this.resize()
+            // once refresh is complete, then clear refresh object
+            this.last.pendingRefresh = {}
+        }, 15)
         // mix in options, w/o items
         let items = options.items
         delete options.items
@@ -94,8 +127,8 @@ class w2toolbar extends w2base {
                 item = arr[idx] = { id: item, text: item }
             }
             // checks
-            let valid = ['button', 'check', 'radio', 'drop', 'menu', 'menu-radio', 'menu-check', 'color', 'text-color', 'html',
-                'break', 'spacer', 'new-line']
+            let valid = ['button', 'check', 'radio', 'drop', 'menu', 'menu-radio', 'menu-check', 'color', 'text-color', 'html', 'label', 'input',
+                'group', 'break', 'spacer', 'new-line']
             if (!valid.includes(String(item.type))) {
                 console.log('ERROR: The parameter "type" should be one of the following:', valid, `, but ${item.type} is supplied.`, item)
                 return
@@ -171,15 +204,24 @@ class w2toolbar extends w2base {
         return true
     }
 
-    get(id, returnIndex) {
+    get(id, returnIndex, items) {
         if (arguments.length === 0) {
             let all = []
-            for (let i1 = 0; i1 < this.items.length; i1++) if (this.items[i1].id != null) all.push(this.items[i1].id)
+            for (let i1 = 0; i1 < this.items.length; i1++) {
+                let it = this.items[i1]
+                if (it.id != null) all.push(it.id)
+                if (it.type == 'group') {
+                    for (let i2 = 0; i2 < it.items.length; i2++) {
+                        if (it.items[i2].id != null) all.push(it.items[i2].id)
+                    }
+                }
+            }
             return all
         }
         let tmp = String(id).split(':')
-        for (let i2 = 0; i2 < this.items.length; i2++) {
-            let it = this.items[i2]
+        if (items == null) items = this.items
+        for (let i1 = 0; i1 < items.length; i1++) {
+            let it = items[i1]
             // find a menu item
             if (['menu', 'menu-radio', 'menu-check'].includes(it.type) && tmp.length == 2 && it.id == tmp[0]) {
                 let subItems = it.items
@@ -198,7 +240,10 @@ class w2toolbar extends w2base {
                     }
                 }
             } else if (it.id == tmp[0]) {
-                if (returnIndex == true) return i2; else return it
+                if (returnIndex == true) return i1; else return it
+            } else if (it.type == 'group') {
+                let sub = this.get(id, returnIndex, it.items)
+                if (sub != null) return sub
             }
         }
         return null
@@ -228,10 +273,14 @@ class w2toolbar extends w2base {
         Array.from(arguments).forEach(item => {
             let it = this.get(item)
             if (!it) return
+            // since group can have style, it should still be shown
             it.hidden = false
             effected.push(String(item).split(':')[0])
+            if (it.type == 'group') {
+                it.items.forEach(itm => this.show(itm.id))
+            }
         })
-        setTimeout(() => { effected.forEach(it => { this.refresh(it); this.resize() }) }, 15) // needs timeout
+        this._refresh({ effected, resize: true }) // debounced, needed for speed
         return effected
     }
 
@@ -240,10 +289,14 @@ class w2toolbar extends w2base {
         Array.from(arguments).forEach(item => {
             let it = this.get(item)
             if (!it) return
+            // since group can have style, it should still be hidden
             it.hidden = true
             effected.push(String(item).split(':')[0])
+            if (it.type == 'group') {
+                it.items.forEach(itm => this.hide(itm.id))
+            }
         })
-        setTimeout(() => { effected.forEach(it => { this.refresh(it); this.tooltipHide(it); this.resize() }) }, 15) // needs timeout
+        this._refresh({ effected, hideTooltip: true, resize: true }) // debounced, needed for speed
         return effected
     }
 
@@ -252,10 +305,14 @@ class w2toolbar extends w2base {
         Array.from(arguments).forEach(item => {
             let it = this.get(item)
             if (!it) return
-            it.disabled = false
-            effected.push(String(item).split(':')[0])
+            if (it.type == 'group') {
+                it.items.forEach(itm => this.enable(itm.id))
+            } else {
+                it.disabled = false
+                effected.push(String(item).split(':')[0])
+            }
         })
-        setTimeout(() => { effected.forEach(it => { this.refresh(it) }) }, 15) // needs timeout
+        this._refresh({ effected }) // debounced, needed for speed
         return effected
     }
 
@@ -264,10 +321,14 @@ class w2toolbar extends w2base {
         Array.from(arguments).forEach(item => {
             let it = this.get(item)
             if (!it) return
-            it.disabled = true
-            effected.push(String(item).split(':')[0])
+            if (it.type == 'group') {
+                it.items.forEach(itm => this.disable(itm.id))
+            } else {
+                it.disabled = true
+                effected.push(String(item).split(':')[0])
+            }
         })
-        setTimeout(() => { effected.forEach(it => { this.refresh(it); this.tooltipHide(it) }) }, 15) // needs timeout
+        this._refresh({ effected, hideTooltip: true }) // debounced, needed for speed
         return effected
     }
 
@@ -276,10 +337,14 @@ class w2toolbar extends w2base {
         Array.from(arguments).forEach(item => {
             let it = this.get(item)
             if (!it || String(item).indexOf(':') != -1) return
-            it.checked = true
-            effected.push(String(item).split(':')[0])
+            if (it.type == 'group') {
+                it.items.forEach(itm => this.check(itm.id))
+            } else {
+                it.checked = true
+                effected.push(String(item).split(':')[0])
+            }
         })
-        setTimeout(() => { effected.forEach(it => { this.refresh(it) }) }, 15) // needs timeout
+        this._refresh({ effected }) // debounced, needed for speed
         return effected
     }
 
@@ -292,10 +357,14 @@ class w2toolbar extends w2base {
             if (['menu', 'menu-radio', 'menu-check', 'drop', 'color', 'text-color'].includes(it.type) && it.checked) {
                 w2tooltip.hide(this.name + '-drop')
             }
-            it.checked = false
-            effected.push(String(item).split(':')[0])
+            if (it.type == 'group') {
+                it.items.forEach(itm => this.uncheck(itm.id))
+            } else {
+                it.checked = false
+                effected.push(String(item).split(':')[0])
+            }
         })
-        setTimeout(() => { effected.forEach(it => { this.refresh(it) }) }, 15) // needs timeout
+        this._refresh({ effected }) // debounced, needed for speed
         return effected
     }
 
@@ -328,6 +397,16 @@ class w2toolbar extends w2base {
             if (it.type == 'radio') {
                 for (let i = 0; i < this.items.length; i++) {
                     let itt = this.items[i]
+                    if (itt.type == 'group') {
+                        for (let i1 = 0; i1 < itt.items.length; i1++) {
+                            let itt1 = itt.items[i1]
+                            if (itt1 == null || itt1.id == it.id || itt1.type !== 'radio') continue
+                            if (itt1.group == it.group && itt1.checked) {
+                                itt1.checked = false
+                                this.refresh(itt1.id)
+                            }
+                        }
+                    }
                     if (itt == null || itt.id == it.id || itt.type !== 'radio') continue
                     if (itt.group == it.group && itt.checked) {
                         itt.checked = false
@@ -382,13 +461,14 @@ class w2toolbar extends w2base {
                                 })
                             }
                             w2menu.show(w2utils.extend({
-                                items,
-                            }, it.overlay, {
-                                type: menuType,
-                                name : this.name + '-drop',
-                                anchor: el[0],
-                                data: { item: it, btn }
-                            }))
+                                    items,
+                                    align: it.text ? 'left' : 'none', // if there is no text, then no alignent
+                                }, it.overlay, {
+                                    type: menuType,
+                                    name : this.name + '-drop',
+                                    anchor: el[0],
+                                    data: { item: it, btn }
+                                }))
                                 .hide(hideDrop(it.id, btn))
                                 .remove(event => {
                                     this.menuClick({ name: this.name, remove: true, item: it, subItem: event.detail.item,
@@ -401,12 +481,12 @@ class w2toolbar extends w2base {
                         }
                         if (['color', 'text-color'].includes(it.type)) {
                             w2color.show(w2utils.extend({
-                                color: it.color
-                            }, it.overlay, {
-                                anchor: el[0],
-                                name: this.name + '-drop',
-                                data: { item: it, btn }
-                            }))
+                                    color: it.color
+                                }, it.overlay, {
+                                    anchor: el[0],
+                                    name: this.name + '-drop',
+                                    data: { item: it, btn }
+                                }))
                                 .hide(hideDrop(it.id, btn))
                                 .select(event => {
                                     if (event.detail.color != null) {
@@ -466,7 +546,11 @@ class w2toolbar extends w2base {
                     break
                 }
             }
-            setTimeout(() => { this.resize(); resolve() }, instant ? 0 : 500)
+            /**
+             * Timeout is needed because browser animates scroll. Also, I found that 500ms is not enough
+             * as it could take longer then that, but animation seems to be around 500ms
+             */
+            setTimeout(() => { this.resize(); resolve() }, instant ? 0 : 600)
         })
     }
 
@@ -478,13 +562,7 @@ class w2toolbar extends w2base {
         if (edata.isCancelled === true) return
         // defaul action
         if (box != null) {
-            // clean previous box
-            if (query(this.box).find('.w2ui-scroll-wrapper .w2ui-tb-right').length > 0) {
-                query(this.box)
-                    .removeAttr('name')
-                    .removeClass('w2ui-reset w2ui-toolbar')
-                    .html('')
-            }
+            this.unmount() // clean previous control
             this.box = box
         }
         if (!this.box) return
@@ -525,6 +603,7 @@ class w2toolbar extends w2base {
         if (query(this.box).length > 0) {
             query(this.box)[0].style.cssText += this.style
         }
+        // overflow buttons
         w2utils.bindEvents(query(this.box).find('.w2ui-tb-line .w2ui-eaction'), this)
         // observe div resize
         this.last.observeResize = new ResizeObserver(() => { this.resize() })
@@ -578,27 +657,29 @@ class w2toolbar extends w2base {
             } else {
                 $next.after(html)
             }
-            w2utils.bindEvents(query(this.box).find(selector), this)
+            w2utils.bindEvents(query(this.box).find(`${selector}, ${selector} .w2ui-eaction`), this)
         } else {
             // refresh
             query(this.box).find(selector).replace(query.html(html))
-            let newBtn = query(this.box).find(selector).get(0)
+            let newBtn = query(this.box).find(selector)
             w2utils.bindEvents(newBtn, this)
+            w2utils.bindEvents(newBtn.find('.w2ui-eaction'), this)
             // update overlay's anchor if changed
             let overlays = w2tooltip.get(true)
             Object.keys(overlays).forEach(key => {
                 if (overlays[key].anchor == btn.get(0)) {
-                    overlays[key].anchor = newBtn
+                    overlays[key].anchor = newBtn.get(0)
                 }
             })
         }
         if (['menu', 'menu-radio', 'menu-check'].includes(it.type) && it.checked) {
             // check selected items
             let selected = Array.isArray(it.selected) ? it.selected : [it.selected]
-            it.items.forEach((item) => {
+            let items = typeof it.items == 'function' ? it.items(it) : [...it.items]
+            items.forEach((item) => {
                 if (selected.includes(item.id)) item.checked = true; else item.checked = false
             })
-            w2menu.update(this.name + '-drop', it.items)
+            w2menu.update(this.name + '-drop', items)
         }
         // event after
         if (typeof it.onRefresh == 'function') {
@@ -621,6 +702,7 @@ class w2toolbar extends w2base {
             let scrollBox  = box.find('.w2ui-scroll-wrapper').get(0)
             let $right     = box.find('.w2ui-tb-right')
             let boxWidth   = box.get(0).getBoundingClientRect().width
+            // Do not use $right[0].getBoundingClientRect(). right box is the most left div
             let itemsWidth = ($right.length > 0 ? $right[0].offsetLeft + $right[0].clientWidth : 0)
             if (boxWidth < itemsWidth) {
                 // we have overflown content
@@ -642,17 +724,17 @@ class w2toolbar extends w2base {
         let edata = this.trigger('destroy', { target: this.name })
         if (edata.isCancelled === true) return
         // clean up
-        if (query(this.box).find('.w2ui-scroll-wrapper  .w2ui-tb-right').length > 0) {
-            query(this.box)
-                .removeAttr('name')
-                .removeClass('w2ui-reset w2ui-toolbar')
-                .html('')
+        if (query(this.box).find('.w2ui-scroll-wrapper').length > 0) {
+            this.unmount()
         }
-        query(this.box).html('')
-        this.last.observeResize?.disconnect()
         delete w2ui[this.name]
         // event after
         edata.finish()
+    }
+
+    unmount() {
+        super.unmount()
+        this.last.observeResize?.disconnect()
     }
 
     // ========================================
@@ -679,11 +761,11 @@ class w2toolbar extends w2base {
                 icon = item.icon.call(this, item)
             }
             if (String(icon).slice(0, 1) !== '<') {
-                icon = `<span class="${icon}"></span>`
+                icon = `<span class="${icon}" ${item.icon_style ? `style="${item.icon_style}"` : ''}></span>`
             }
             icon = `<div class="w2ui-tb-icon">${icon}</div>`
         }
-        let classes = ['w2ui-tb-button']
+        let classes = ['w2ui-tb-button', 'w2ui-eaction']
         if (item.checked) classes.push('checked')
         if (item.disabled) classes.push('disabled')
         if (item.hidden) classes.push('hidden')
@@ -701,9 +783,21 @@ class w2toolbar extends w2base {
                            ${(item.text ? `<div style="margin-left: 17px;">${w2utils.lang(item.text)}</div>` : '')}`
                 }
                 if (item.type == 'text-color') {
-                    text = '<span style="color: '+ (item.color != null ? item.color : '#444') +';">'+
-                                (item.text ? w2utils.lang(item.text) : '<b>Aa</b>') +
-                           '</span>'
+                    let color = (item.color != null ? item.color : '#444')
+                    let bcolor = item.backColor
+                    if (item.backColor === true) {
+                        bcolor = '#fff'
+                        if (w2utils.colorContrast('#fff', color) < 2) {
+                            bcolor = '#555'
+                        }
+                    }
+                    text = `<span style="color: ${color}">${item.text
+                        ? w2utils.lang(item.text)
+                        : (item.backColor
+                            ? `<b style="background-color: ${bcolor ?? 'transparent'}; padding: 2px 5px; border-radius: 3px;">Ab</b>`
+                            : '<b>Ab</b>'
+                        )
+                    }</span>`
                 }
             case 'menu':
             case 'menu-check':
@@ -711,12 +805,13 @@ class w2toolbar extends w2base {
             case 'button':
             case 'check':
             case 'radio':
+            case 'label':
             case 'drop': {
                 let arrow = (item.arrow === true
                     || (item.arrow !== false && ['menu', 'menu-radio', 'menu-check', 'drop', 'color', 'text-color'].includes(item.type)))
                 html = `
-                    <div id="tb_${this.name}_item_${item.id}" style="${(item.hidden ? 'display: none' : '')}"
-                        class="${classes.join(' ')} ${(item.class ? item.class : '')}"
+                    <div id="tb_${this.name}_item_${item.id}" class="${classes.join(' ')} ${(item.class ? item.class : '')}"
+                        style="${(item.hidden ? 'display: none' : '')} ${item.type == 'label' ? (item.style ?? '') : ''}"
                         ${!item.disabled
                             ? `data-click='["click","${item.id}"]'
                                data-mouseenter='["mouseAction", "event", "this", "Enter", "${item.id}"]'
@@ -726,56 +821,172 @@ class w2toolbar extends w2base {
                             : ''}
                     >
                         ${ icon }
-                        ${ text != ''
-                            ? `<div class="w2ui-tb-text" style="${(item.style ? item.style : '')}">
+                        ${ (text != '' && text != null) || item.count != null || arrow
+                            ? `<div class="w2ui-tb-text" style="${item.type != 'label' ? (item.style ?? '') : ''}; ${!text ? 'padding-left: 0; margin-left: 23px;' : ''}">
                                     ${ w2utils.lang(text) }
                                     ${ item.count != null
-                                        ? w2utils.stripSpaces(`<span class="w2ui-tb-count">
+                                        ? w2utils.stripSpaces(`
+                                            <span class="w2ui-tb-count">
                                                 <span class="${this.last.badge[item.id] ? this.last.badge[item.id].className ?? '' : ''}"
-                                                    style="${this.last.badge[item.id] ? this.last.badge[item.id].style ?? '' : ''}"
-                                                >${item.count}</span>
-                                           </span>`)
+                                                        style="${this.last.badge[item.id] ? this.last.badge[item.id].style ?? '' : ''}">${item.count}</span>
+                                            </span>`)
                                         : ''
                                     }
                                     ${ arrow
-                                        ? '<span class="w2ui-tb-down"><span></span></span>'
+                                        ? `<span class="w2ui-tb-down" ${!text && !item.count ? 'style="margin-left: -3px"' : ''}><span></span></span>`
                                         : ''
                                     }
                                 </div>`
-                            : ''}
+                            : ''
+                        }
                     </div>
                 `
                 break
             }
-
-            case 'break':
+            case 'break': {
                 html = `<div id="tb_${this.name}_item_${item.id}" class="w2ui-tb-break"
                             style="${(item.hidden ? 'display: none' : '')}; ${(item.style ? item.style : '')}">
                             &#160;
                         </div>`
                 break
-
-            case 'spacer':
+            }
+            case 'spacer': {
                 html = `<div id="tb_${this.name}_item_${item.id}" class="w2ui-tb-spacer"
                             style="${(item.hidden ? 'display: none' : '')}; ${(item.style ? item.style : '')}">
                         </div>`
                 break
-
-            case 'html':
+            }
+            case 'html': {
                 html = `<div id="tb_${this.name}_item_${item.id}" class="w2ui-tb-html ${classes.join(' ')}"
                             style="${(item.hidden ? 'display: none' : '')}; ${(item.style ? item.style : '')}">
                             ${(typeof item.html == 'function' ? item.html.call(this, item) : item.html)}
                         </div>`
                 break
+            }
+            case 'input': {
+                let ph = item.placeholder
+                let val = item.value
+                // round to step
+                if (val != null && String(val).trim() !== '' && item.spinner) {
+                    let step = item.spinner?.step ?? 1
+                    let prec = item.spinner.precision ?? String(step).split('.')[1]?.length ?? 0
+                    val = val.toFixed(prec)
+                }
+                html = `<div id="tb_${this.name}_item_${item.id}" class="w2ui-tb-input w2ui-eaction ${classes.join(' ')}"
+                            style="${(item.hidden ? 'display: none' : '')}; ${(item.style ? item.style : '')}"
+                        >
+                            <span class="w2ui-input-label">${item.text ?? ''}</span>
+                            ${item.spinner
+                                ? `<span class="w2ui-spinner-dec w2ui-eaction" data-click='["spinner", "${item.id}", "dec", "event"]'> – </span>`
+                                : ''}
+                            <input class="w2ui-toolbar-input w2ui-eaction ${item.spinner ? 'w2ui-has-spinner' : ''}"
+                                ${ph ? `placeholder="${ph}"` : ''} style="${item.spinner?.style ?? ''}" value="${val ?? ''}${item.spinner?.suffix ?? ''}"
+                                data-change='["change", "${item.id}", "this"]'
+                                data-keydown='["spinner", "${item.id}", "key", "event"]'
+                                data-mouseenter='["mouseAction", "event", "this", "Enter", "${item.id}"]'
+                                data-mouseleave='["mouseAction", "event", "this", "Leave", "${item.id}"]'
+                            >
+                            ${item.spinner
+                                ? `<span class="w2ui-spinner-inc w2ui-eaction" data-click='["spinner", "${item.id}", "inc", "event"]'> + </span>`
+                                : ''}
+                        </div>`
+                break
+            }
+            case 'group': {
+                html = `<div id="tb_${this.name}_item_${item.id}" class="w2ui-tb-group"
+                    style="display: flex; ${(item.hidden ? 'display: none' : '')}; ${(item.style ? item.style : '')}">`
+                if (Array.isArray(item.items)) {
+                    item.items.forEach(it => {
+                        html += this.getItemHTML(it)
+                    })
+                } else {
+                    console.log('ERROR: toolbar group is empty')
+                }
+                html += '</div>'
+            }
         }
         return html
+    }
+
+    spinner(id, action, event) {
+        let it = this.get(id)
+        let inc = 0
+        switch (action) {
+            case 'inc': {
+                inc = (it.spinner?.step ?? 1)
+                break
+            }
+            case 'dec': {
+                inc = -(it.spinner?.step ?? 1)
+                break
+            }
+            case 'key': {
+                if (it.spinner) {
+                    let mult = 1
+                    if (event.shiftKey || event.metaKey) mult = 10
+                    if (event.altKey) mult = 0.1
+                    switch(event.key) {
+                        case 'ArrowUp': {
+                            inc = (it.spinner?.step ?? 1) * mult
+                            event.preventDefault()
+                            break
+                        }
+                        case 'ArrowDown': {
+                            inc = -(it.spinner?.step ?? 1) * mult
+                            event.preventDefault()
+                            break
+                        }
+                    }
+                }
+                break
+            }
+        }
+        if (inc !== 0) {
+            this.change(id, (it.value ?? 0) + inc)
+        }
+    }
+
+    change(id, value) {
+        let it = this.get(id)
+        let input = query(this.box).find('#tb_'+ this.name +'_item_'+ w2utils.escapeId(id)).find('input.w2ui-toolbar-input')
+        if (value instanceof HTMLInputElement) {
+            value = value.value
+        }
+        if (value == null) value = input.val()
+        if (it.spinner) {
+            value = parseFloat(value)
+        }
+        // min/max
+        if (it.spinner?.min != null && it.spinner.min > value) {
+            value = it.spinner.min
+        }
+        if (it.spinner?.max != null && it.spinner.max < value) {
+            value = it.spinner.max
+        }
+        // round to step
+        if (it.spinner) {
+            if (isNaN(value)) value = it.spinner.min ?? 0
+            let step = it.spinner?.step ?? 1
+            let prec = it.spinner.precision ?? String(step).split('.')[1]?.length ?? 0
+            value = value.toFixed(prec)
+        }
+
+        // event beofre
+        let edata = this.trigger('change', { target: id, id, value, item: it })
+        if (edata.isCancelled) {
+            return
+        }
+        it.value = it.spinner ? parseFloat(value) : value
+        input.val(value + (it.spinner?.suffix ?? ''))
+        // event after
+        edata.finish()
     }
 
     tooltipShow(id) {
         if (this.tooltip == null) return
         let el   = query(this.box).find('#tb_'+ this.name + '_item_'+ w2utils.escapeId(id)).get(0)
         let item = this.get(id)
-        let pos  = this.tooltip
+        let overlay = (typeof this.tooltip == 'string' ? { position: this.tooltip } : this.tooltip)
         let txt  = item.tooltip
         if (typeof txt == 'function') txt = txt.call(this, item)
         // not for opened drop downs
@@ -787,7 +998,7 @@ class w2toolbar extends w2base {
             anchor: el,
             name: this.name + '-tooltip',
             html: txt,
-            position: pos
+            ...overlay
         })
         return
     }
@@ -884,10 +1095,7 @@ class w2toolbar extends w2base {
         let obj = this
         if (event.item && !event.item.disabled) {
             // event before
-            let edata = this.trigger('click', {
-                target: event.item.id, item: event.item,
-                color: event.color, final: event.final, originalEvent: event.originalEvent
-            })
+            let edata = this.trigger('click', { target: event.item.id, item: event.item, color: event.color, final: true })
             if (edata.isCancelled === true) return
 
             // default behavior
@@ -905,18 +1113,26 @@ class w2toolbar extends w2base {
         if (edata.isCancelled === true || btn.disabled || btn.hidden) return
         switch (action) {
             case 'Enter':
-                query(target).addClass('over')
+                if (!['label', 'input'].includes(btn.type)) {
+                    query(target).addClass('over')
+                }
                 this.tooltipShow(id)
                 break
             case 'Leave':
-                query(target).removeClass('over down')
+                if (!['label', 'input'].includes(btn.type)) {
+                    query(target).removeClass('over down')
+                }
                 this.tooltipHide(id)
                 break
             case 'Down':
-                query(target).addClass('down')
+                if (!['label', 'input'].includes(btn.type)) {
+                    query(target).addClass('down')
+                }
                 break
             case 'Up':
-                query(target).removeClass('down')
+                if (!['label', 'input'].includes(btn.type)) {
+                    query(target).removeClass('down')
+                }
                 break
         }
         edata.finish()
