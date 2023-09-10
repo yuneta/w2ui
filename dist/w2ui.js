@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 /* w2ui 2.0.x (nightly) (c) http://w2ui.com, vitmalina@gmail.com */
-=======
-/* w2ui 2.0.x (nightly) (8/29/2023, 6:36:15 PM) (c) http://w2ui.com, vitmalina@gmail.com */
->>>>>>> 3af841e9810781a02413a60460c2850c6c62e410
 /**
  * Part of w2ui 2.0 library
  *  - Dependencies: w2utils
@@ -1026,10 +1022,7 @@ query.version = Query.version
  *  - implemented marker
  *  - cssPrefix - deprecated
  *  - w2utils.debounce
-<<<<<<< HEAD
-=======
  *  - w2utils.prepareParams
->>>>>>> 3af841e9810781a02413a60460c2850c6c62e410
  */
 
 // variable that holds all w2ui objects
@@ -17099,12 +17092,6 @@ class w2grid extends w2base {
                     w2utils.bindEvents(query(this.box).find(`#grid_${this.name}_search_all, .w2ui-action`), this)
                     // slow down live search calls
                     let slowSearch = w2utils.debounce((event) => {
-<<<<<<< HEAD
-                            let val = event.target.value
-                            if (this.liveSearch && this.last.liveText != val) {
-                                this.last.liveText = val
-                                this.search(this.last.field, val)
-=======
                         let val = event.target.value
                         if (this.liveSearch && this.last.liveText != val) {
                             this.last.liveText = val
@@ -17119,7 +17106,6 @@ class w2grid extends w2base {
                             if (!this.liveSearch) {
                                 this.search(this.last.field, event.target.value)
                                 this.searchSuggest(true, true, this)
->>>>>>> 3af841e9810781a02413a60460c2850c6c62e410
                             }
                         })
                         .on('blur', () => { this.last.liveText = '' })
@@ -17138,15 +17124,7 @@ class w2grid extends w2base {
                                     slowSearch(event)
                                 }
                             }
-                        }, 250)
-                    input.on('change', event => {
-                        if (!this.liveSearch) {
-                            this.search(this.last.field, event.target.value)
-                            this.searchSuggest(true, true, this)
-                        }
-                    })
-                        .on('blur', () => { this.last.liveText = '' })
-                        .on('keyup', slowSearch)
+                        })
                 }
             })
         }
@@ -19741,7 +19719,10 @@ class w2form extends w2base {
         // if (previous == null) previous = ''
         // clean extra chars
         if (['int', 'float', 'percent', 'money', 'currency'].includes(field.type)) {
-            current = field.w2field.clean(current)
+            // for float values allow "0." input as valid, otherwise it is nto possible to enter .
+            if (field.type == 'int' || current[current.length -1] != '.') {
+                current = field.w2field.clean(current)
+            }
         }
         // radio list
         if (['radio'].includes(field.type)) {
@@ -21445,9 +21426,11 @@ class w2field extends w2base {
                 break
             }
             case 'color': {
+                let size = parseInt(getComputedStyle(this.el)['font-size']) || 12
                 defaults     = {
                     prefix      : '#',
-                    suffix      : `<div style="width: ${(parseInt(getComputedStyle(this.el)['font-size'])) || 12}px">&#160;</div>`,
+                    suffix      : `<div style="width: ${size}px; height: ${size}px; margin-top: -2px;
+                                    position: relative; top: 50%; transform: translateY(-50%);">&#160;</div>`,
                     arrow       : false,
                     advanced    : null, // open advanced by default
                     transparent : true
@@ -21545,14 +21528,10 @@ class w2field extends w2base {
                     msgSearch       : 'Type to search...',
                     openOnFocus     : false,  // if to show overlay onclick or when typing
                     markSearch      : false,
-<<<<<<< HEAD
-                    msgSearch       : '',     // placeholder for search bar
-=======
                     onSearch        : null,   // when search needs to be performed
                     onRequest       : null,   // when request is submitted
                     onLoad          : null,   // when data is received
                     onError         : null    // when data fails to load due to server error or other failure modes
->>>>>>> 3af841e9810781a02413a60460c2850c6c62e410
                 }
                 if (typeof options.items == 'function') {
                     options._items_fun = options.items
@@ -21571,7 +21550,6 @@ class w2field extends w2base {
                         })
                     }
                 }
-                options.msgSearch = options.msgSearch || "Type to search..."
                 options = w2utils.extend({}, defaults, options)
                 // validate match
                 let valid = ['is', 'begins', 'contains', 'ends']
@@ -21586,7 +21564,6 @@ class w2field extends w2base {
                     .attr('autocomplete', 'off')
                     .attr('autocorrect', 'off')
                     .attr('spellcheck', 'false')
-                    .attr('placeholder', options.msgSearch)
                 if (options.selected.text != null) {
                     query(this.el).val(options.selected.text)
                 }
@@ -22690,15 +22667,17 @@ class w2field extends w2base {
                 'font-family'    : styles['font-family'],
                 'font-size'      : styles['font-size'],
                 'height'         : this.el.clientHeight + 'px',
-                'padding-top'    : styles['padding-top'],
-                'padding-bottom' : styles['padding-bottom'],
+                'padding-top'    : parseInt(styles['padding-top'], 10) + 1 + 'px',
+                'padding-bottom' : parseInt(styles['padding-bottom'], 10) - 1 + 'px',
                 'padding-left'   : this.tmp['old-padding-left'],
                 'padding-right'  : 0,
-                'margin-top'     : (parseInt(styles['margin-top'], 10) + 2) + 'px',
-                'margin-bottom'  : (parseInt(styles['margin-bottom'], 10) + 1) + 'px',
+                'margin-top'     : (parseInt(styles['margin-top'], 10)) + 'px',
+                'margin-bottom'  : (parseInt(styles['margin-bottom'], 10)) + 'px',
                 'margin-left'    : styles['margin-left'],
                 'margin-right'   : 0,
                 'z-index'        : 1,
+                'display'        : 'flex',
+                'align-items'    : 'center'
             })
         // only if visible
         query(this.el).css('padding-left', helper.clientWidth + 'px !important')
@@ -23840,8 +23819,4 @@ if (global) {
     w2popup, w2alert, w2confirm, w2prompt, Dialog, w2window,
     w2tooltip, w2menu, w2color, w2date, Tooltip,
     w2toolbar, w2sidebar, w2tabs, w2layout, w2grid, w2form, w2field
-<<<<<<< HEAD
-})
-=======
 });
->>>>>>> 3af841e9810781a02413a60460c2850c6c62e410
