@@ -42,6 +42,7 @@ query(async function () {
                 { id: 'form', type: 'radio', text: 'Forms', icon: 'fa fa-pencil-square-o', route: 'form/1' },
                 { id: 'fields', type: 'radio', text: 'Fields', icon: 'fa fa-pencil-square-o', route: 'fields/1' },
                 { id: 'popup', type: 'radio', text: 'Popup', icon: 'fa fa-list-alt', route: 'popup/1' },
+                { id: 'window', type: 'radio', text: 'Window', icon: 'fa fa-list-alt', route: 'window/1' },
                 { id: 'tooltip', type: 'radio', text: 'Tooltip', icon: 'fa fa-comment-o', route: 'tooltip/1' },
                 { id: 'utils', type: 'radio', text: 'Utils', icon: 'fa fa-star-o', route: 'utils/1' },
                 { type: 'spacer' },
@@ -360,6 +361,11 @@ query(async function () {
                         { id: 'popup/4', text: 'Lock/Unlock', icon: 'fa fa-list-alt' },
                         { id: 'popup/5', text: 'Context Message', icon: 'fa fa-list-alt' },
                         { id: 'popup/6', text: 'Transitions', icon: 'fa fa-list-alt' }
+                    ]
+                },
+                { id: 'window', text: 'Window', img: 'icon-folder', group: true, expanded: true, hidden: true,
+                    nodes: [
+                        { id: 'window/1', text: 'Simple Window', icon: 'fa fa-list-alt' },
                     ]
                 },
                 { id: 'popup-1.5', text: 'Features 1.5+', img: 'icon-folder', group: true, expanded: true, hidden: true,

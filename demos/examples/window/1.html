@@ -1,0 +1,33 @@
+<div class="content">
+    <div id="example_title">
+        <h1>Window</h1>
+        Window
+    </div>
+    <div id="example_view"></div>
+    <div id="example_code"></div>
+</div>
+
+<!--CODE-->
+<button class="w2ui-btn" onclick="window1()">Simple Window</button>
+
+<!--CODE-->
+<script type="module">
+import { w2window } from '__W2UI_PATH__'
+
+window.window1 = function() {
+
+    let w = new w2window({
+        name: "Window",
+        title: "Window",
+        x: 40,
+        y: 2,
+        width: 400,
+        height: 350,
+        onResized(ev) {
+        },
+        onClose(ev) {
+        }
+    });
+
+}
+</script>
